@@ -59,6 +59,14 @@ class _LoginScreenState extends State<LoginScreen> {
             key: _formKey,
             child: ListView(
               children: [
+                Center(
+                  child: Image.asset(
+                    'assets/images/branding/app_logo.png',
+                    width: 88,
+                    height: 88,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Text('مرحبًا بعودتك', style: AppTextStyles.screenTitle),
                 const SizedBox(height: 8),
                 Text(

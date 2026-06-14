@@ -100,7 +100,7 @@ class _SearchScreenState extends State<SearchScreen> {
             Expanded(
               child: results.isEmpty
                   ? const EmptyState(
-                      icon: Icons.search_off,
+                      imagePath: 'assets/images/empty_states/empty_search.png',
                       title: 'لا توجد نتائج',
                       subtitle: 'جرّب كلمة بحث أخرى أو غيّر الفلتر',
                     )

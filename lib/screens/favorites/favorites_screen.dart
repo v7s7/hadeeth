@@ -25,7 +25,7 @@ class FavoritesScreen extends StatelessWidget {
       body: SafeArea(
         child: hadiths.isEmpty
             ? const EmptyState(
-                icon: Icons.bookmark_border,
+                imagePath: 'assets/images/empty_states/empty_favorites.png',
                 title: 'لا توجد أحاديث محفوظة',
                 subtitle: 'اضغط على أيقونة الحفظ في أي حديث لإضافته هنا',
               )

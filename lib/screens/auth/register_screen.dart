@@ -64,6 +64,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
             key: _formKey,
             child: ListView(
               children: [
+                Center(
+                  child: Image.asset(
+                    'assets/images/branding/app_logo.png',
+                    width: 88,
+                    height: 88,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Text('إنشاء حساب جديد', style: AppTextStyles.screenTitle),
                 const SizedBox(height: 8),
                 Text(

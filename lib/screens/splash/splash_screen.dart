@@ -39,21 +39,12 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.accent, width: 3),
-              ),
-              child: const Icon(
-                Icons.menu_book_rounded,
-                size: 48,
-                color: AppColors.primary,
-              ),
+            Image.asset(
+              'assets/images/branding/splash_illustration.png',
+              width: 240,
+              fit: BoxFit.contain,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             Text(
               'الحديث المهجور',
               style: AppTextStyles.appTitle.copyWith(color: Colors.white),
