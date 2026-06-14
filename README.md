@@ -18,10 +18,14 @@ Firebase)، وكيفية تشغيله وإعداد قاعدة البيانات،
 المشروع لأول مرة:
 
 ```bash
-flutter create . --project-name hadeeth --org com.example --platforms=ios,android
+flutter create . --project-name hadeeth --org com.hadeeth --platforms=web,ios,android
 flutter pub get
-flutter run
+flutter run -d chrome
 ```
+
+> `--org com.hadeeth` ينتج بُعد iOS `com.hadeeth.app`، المطابق لتطبيق iOS
+> المُسجَّل في Firebase (`hadeeth-19906`). إعدادات الويب و iOS في
+> `lib/firebase_options.dart` جاهزة فعليًا؛ Android لا يزال placeholder.
 
 الأمر الأول يولّد مجلدات المنصّات المطلوبة (`android/`, `ios/`, ...) دون
 المساس بمجلد `lib/` أو ملفات الإعداد الموجودة. مجلدات المنصّات مستثناة من
