@@ -33,26 +33,31 @@ Git عبر `.gitignore` حاليًا.
 
 ## إعداد Firebase
 
-1. أنشئ مشروعًا جديدًا على [Firebase Console](https://console.firebase.google.com).
-2. من **Authentication → Sign-in method**، فعّل مزوّد **Email/Password**.
-3. من **Firestore Database**، أنشئ قاعدة بيانات (وضع Production).
-4. ثبّت FlutterFire CLI وفعّل المشروع:
-   ```bash
-   dart pub global activate flutterfire_cli
-   flutterfire configure
-   ```
-   هذا الأمر يستبدل `lib/firebase_options.dart` (المؤقت حاليًا) بإعدادات
-   مشروعك الحقيقية، ويضيف ملفات إعداد المنصّات (`google-services.json`،
-   `GoogleService-Info.plist`، ...).
-5. انشر قواعد الأمان الموجودة في `firestore.rules`:
+نسخة الويب من التطبيق مربوطة فعليًا بمشروع Firebase باسم `hadeeth-19906`
+(الإعدادات في `lib/firebase_options.dart`، تحت `DefaultFirebaseOptions.web`).
+لتفعيل تسجيل الدخول والمزامنة بالكامل، أكمل التالي من
+[Firebase Console](https://console.firebase.google.com/project/hadeeth-19906):
+
+1. من **Authentication → Sign-in method**، فعّل مزوّد **Email/Password**.
+2. من **Firestore Database**، أنشئ قاعدة بيانات (وضع Production).
+3. انشر قواعد الأمان الموجودة في `firestore.rules`:
    ```bash
    firebase deploy --only firestore:rules
    ```
    (أو نسخ محتوى الملف يدويًا إلى تبويب **Rules** في Firestore Console).
 
-بدون هذه الخطوات، يستمر التطبيق بالعمل بالبيانات المحلية التجريبية فقط
-(القراءة، الاختبارات، XP/السلسلة في وضع الضيف)، وتظهر رسائل خطأ عربية عند
-محاولة تسجيل الدخول أو الحفظ من لوحة التحكم.
+> لتشغيل التطبيق على Android/iOS بنفس المشروع، ثبّت FlutterFire CLI وشغّل
+> `flutterfire configure` — يضبط إعدادات `android`/`ios` في
+> `lib/firebase_options.dart` دون التأثير على إعدادات `web` الحالية، ويضيف
+> ملفات إعداد المنصّات (`google-services.json`، `GoogleService-Info.plist`، ...):
+> ```bash
+> dart pub global activate flutterfire_cli
+> flutterfire configure
+> ```
+
+بدون تفعيل Authentication و Firestore أعلاه، يستمر التطبيق بالعمل بالبيانات
+المحلية التجريبية فقط (القراءة، الاختبارات، XP/السلسلة في وضع الضيف)، وتظهر
+رسائل خطأ عربية عند محاولة تسجيل الدخول أو الحفظ من لوحة التحكم.
 
 ## تعيين أول مشرف عام (Super Admin)
 
@@ -150,14 +155,21 @@ lib/
   والمستخدمين (الأدوار، تفعيل/تعطيل الحسابات).
 - قواعد أمان Firestore (`firestore.rules`) تحصر كل عمليات الكتابة على
   الأحاديث/التصنيفات بالمشرف العام، وتمنع المستخدمين من ترقية/تفعيل أنفسهم.
+- **ربط مشروع Firebase الحقيقي** (`hadeeth-19906`) لإعدادات الويب في
+  `lib/firebase_options.dart`.
+- **عرض الويب بحجم الهاتف**: على المتصفح، يُعرض التطبيق داخل عرض ثابت (430px)
+  بمحاذاة الوسط لمحاكاة شاشة هاتف، مع خلفية حول الإطار (`lib/app.dart`).
 
 ### لم يُنفَّذ بعد (خارج نطاق هذه الدفعة)
 
 - **الإشعارات**: لا يوجد تكامل مع FCM أو إشعارات محلية. عنصر "تذكير حديث
   اليوم" في شاشة الحساب هو عنصر نائب فقط.
-- `lib/firebase_options.dart` يحتوي حاليًا على قيم مؤقتة (placeholders)؛ يجب
-  استبدالها بتشغيل `flutterfire configure` على مشروعك (انظر "إعداد Firebase"
-  أعلاه) قبل استخدام المصادقة/قاعدة البيانات فعليًا.
+- يجب تفعيل **Email/Password** في Authentication، وإنشاء قاعدة **Firestore**،
+  ونشر `firestore.rules` على مشروع `hadeeth-19906` قبل أن تعمل المصادقة
+  والمزامنة فعليًا (انظر "إعداد Firebase" أعلاه).
+- إعدادات `android`/`ios` في `lib/firebase_options.dart` لا تزال قيمًا مؤقتة
+  (placeholders)؛ شغّل `flutterfire configure` لتفعيلها (انظر "إعداد
+  Firebase" أعلاه).
 - مجلدات المنصّات (`android/`, `ios/`, ...) غير مولَّدة بعد - شغّل
   `flutter create .` كما هو موضّح أعلاه.
 
