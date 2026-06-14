@@ -20,12 +20,12 @@ class GuestBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.accentLight,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.accent.withOpacity(0.35)),
+        border: Border.all(color: AppColors.accentDark.withOpacity(0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.info_outline, color: AppColors.accent),
+          const Icon(Icons.info_outline, color: AppColors.accentDark),
           const SizedBox(width: 10),
           Expanded(child: Text(message, style: AppTextStyles.body)),
         ],

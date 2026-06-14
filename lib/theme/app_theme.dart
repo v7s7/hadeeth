@@ -29,6 +29,7 @@ class AppTheme {
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         centerTitle: true,
         titleTextStyle: GoogleFonts.tajawal(
           fontSize: 18,
@@ -45,11 +46,12 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         color: AppColors.surface,
-        elevation: 0,
+        elevation: 1,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: AppColors.primaryDark.withOpacity(0.08),
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.divider),
         ),
       ),
       chipTheme: base.chipTheme.copyWith(

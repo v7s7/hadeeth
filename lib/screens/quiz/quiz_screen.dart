@@ -293,7 +293,7 @@ class _QuizResultView extends StatelessWidget {
               if (xpGained > 0)
                 Text(
                   '+$xpGained XP',
-                  style: AppTextStyles.bodyBold.copyWith(color: AppColors.accent),
+                  style: AppTextStyles.bodyBold.copyWith(color: AppColors.accentDark),
                 )
               else
                 Text(

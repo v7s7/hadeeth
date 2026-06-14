@@ -125,6 +125,10 @@ class _HadithOfDayCard extends StatelessWidget {
 
     return Card(
       color: AppColors.primary,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: AppColors.accent.withOpacity(0.5)),
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () => context.push('/hadith/${hadith.id}'),
@@ -136,7 +140,7 @@ class _HadithOfDayCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.wb_sunny_outlined, color: Colors.white),
+                  const Icon(Icons.wb_sunny_outlined, color: AppColors.accent),
                   const SizedBox(width: 8),
                   Text(
                     'حديث اليوم',

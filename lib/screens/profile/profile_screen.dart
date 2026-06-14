@@ -175,7 +175,7 @@ class _ProfileHeader extends StatelessWidget {
                     ),
                     child: Text(
                       'مشرف عام',
-                      style: AppTextStyles.badge.copyWith(color: AppColors.accent),
+                      style: AppTextStyles.badge.copyWith(color: AppColors.accentDark),
                     ),
                   ),
                 ],

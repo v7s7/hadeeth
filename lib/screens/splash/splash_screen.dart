@@ -42,9 +42,10 @@ class _SplashScreenState extends State<SplashScreen> {
             Container(
               width: 96,
               height: 96,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
+                border: Border.all(color: AppColors.accent, width: 3),
               ),
               child: const Icon(
                 Icons.menu_book_rounded,
