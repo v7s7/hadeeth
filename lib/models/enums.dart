@@ -8,6 +8,13 @@ enum AuthenticityGrade {
         return 'صحيح';
     }
   }
+
+  static AuthenticityGrade fromName(String? name) {
+    return AuthenticityGrade.values.firstWhere(
+      (value) => value.name == name,
+      orElse: () => AuthenticityGrade.sahih,
+    );
+  }
 }
 
 /// مستوى صعوبة الحديث (يُستخدم في الفلترة وفي اختيار الأسئلة).
@@ -26,6 +33,13 @@ enum DifficultyLevel {
         return 'متقدم';
     }
   }
+
+  static DifficultyLevel fromName(String? name) {
+    return DifficultyLevel.values.firstWhere(
+      (value) => value.name == name,
+      orElse: () => DifficultyLevel.easy,
+    );
+  }
 }
 
 /// حالة نشر المحتوى من لوحة التحكم.
@@ -43,6 +57,13 @@ enum ContentStatus {
       case ContentStatus.hidden:
         return 'مخفي';
     }
+  }
+
+  static ContentStatus fromName(String? name) {
+    return ContentStatus.values.firstWhere(
+      (value) => value.name == name,
+      orElse: () => ContentStatus.published,
+    );
   }
 }
 
@@ -67,5 +88,12 @@ enum QuizQuestionType {
       case QuizQuestionType.application:
         return 'تطبيق عملي';
     }
+  }
+
+  static QuizQuestionType fromName(String? name) {
+    return QuizQuestionType.values.firstWhere(
+      (value) => value.name == name,
+      orElse: () => QuizQuestionType.meaning,
+    );
   }
 }

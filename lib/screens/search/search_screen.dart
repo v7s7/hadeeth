@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../services/hadith_repository.dart';
 import '../../theme/app_colors.dart';
@@ -17,7 +18,6 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  final HadithRepository _repository = HadithRepository();
   final TextEditingController _controller = TextEditingController();
   _SearchFilter _filter = _SearchFilter.all;
   String _query = '';
@@ -30,7 +30,8 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    var results = _repository.search(
+    final repository = context.watch<HadithRepository>();
+    var results = repository.search(
       _query,
       abandonedOnly: _filter == _SearchFilter.abandonedOnly,
     );

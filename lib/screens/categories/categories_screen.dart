@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
-import '../../data/categories_data.dart';
+import '../../services/category_repository.dart';
 import '../../services/hadith_repository.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 
-/// شاشة التصنيفات: شبكة من بطاقات التصنيفات الثمانية.
+/// شاشة التصنيفات: شبكة من بطاقات التصنيفات.
 class CategoriesScreen extends StatelessWidget {
   const CategoriesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final repository = HadithRepository();
+    final repository = context.watch<HadithRepository>();
+    final categories = context.watch<CategoryRepository>().visibleCategories;
 
     return Scaffold(
       appBar: AppBar(title: const Text('التصنيفات')),
@@ -25,9 +27,9 @@ class CategoriesScreen extends StatelessWidget {
             crossAxisSpacing: 12,
             childAspectRatio: 1.3,
           ),
-          itemCount: hadithCategories.length,
+          itemCount: categories.length,
           itemBuilder: (context, index) {
-            final category = hadithCategories[index];
+            final category = categories[index];
             final count = repository.byCategory(category.id).length;
 
             return Card(

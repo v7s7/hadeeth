@@ -13,7 +13,7 @@ class FavoritesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final repository = HadithRepository();
+    final repository = context.watch<HadithRepository>();
     final progressService = context.watch<ProgressService>();
     final savedIds = progressService.progress.savedHadithIds;
 

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../data/categories_data.dart';
 import '../../models/hadith.dart';
+import '../../services/category_repository.dart';
 import '../../services/hadith_repository.dart';
 import '../../services/progress_service.dart';
 import '../../services/session_service.dart';
@@ -26,7 +26,7 @@ class HomeScreen extends StatelessWidget {
     final session = context.watch<SessionService>();
     final progress = progressService.progress;
 
-    final repository = HadithRepository();
+    final repository = context.watch<HadithRepository>();
     final hadithOfDay = repository.hadithOfTheDay();
     final abandoned = repository.abandoned().take(5).toList();
     final recent = repository.recentlyAdded(limit: 5);
@@ -121,7 +121,7 @@ class _HadithOfDayCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final category = categoryById(hadith.categoryId);
+    final category = context.watch<CategoryRepository>().categoryById(hadith.categoryId);
 
     return Card(
       color: AppColors.primary,

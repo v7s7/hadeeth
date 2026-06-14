@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../../data/categories_data.dart';
+import '../../services/category_repository.dart';
 import '../../services/hadith_repository.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/hadith_card.dart';
@@ -13,8 +14,8 @@ class CategoryHadithsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final repository = HadithRepository();
-    final category = categoryById(categoryId);
+    final repository = context.watch<HadithRepository>();
+    final category = context.watch<CategoryRepository>().categoryById(categoryId);
     final hadiths = repository.byCategory(categoryId);
 
     return Scaffold(

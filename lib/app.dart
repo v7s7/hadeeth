@@ -3,6 +3,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'routing/app_router.dart';
+import 'services/category_repository.dart';
+import 'services/hadith_repository.dart';
 import 'services/local_storage_service.dart';
 import 'services/progress_service.dart';
 import 'services/session_service.dart';
@@ -20,6 +22,10 @@ class HadeethApp extends StatelessWidget {
           create: (_) => ProgressService(LocalStorageService())..load(),
         ),
         ChangeNotifierProvider(create: (_) => SessionService()),
+        ChangeNotifierProvider(create: (_) => CategoryRepository()),
+        ChangeNotifierProvider(
+          create: (context) => HadithRepository(context.read<CategoryRepository>()),
+        ),
       ],
       child: MaterialApp.router(
         title: 'الحديث المهجور',

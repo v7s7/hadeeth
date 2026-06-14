@@ -22,8 +22,6 @@ class QuizScreen extends StatefulWidget {
 }
 
 class _QuizScreenState extends State<QuizScreen> {
-  final HadithRepository _repository = HadithRepository();
-
   int _currentIndex = 0;
   int? _selectedOptionIndex;
   bool _answered = false;
@@ -74,7 +72,8 @@ class _QuizScreenState extends State<QuizScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hadith = _repository.getById(widget.hadithId);
+    final repository = context.watch<HadithRepository>();
+    final hadith = repository.getById(widget.hadithId);
 
     if (hadith == null || hadith.quizQuestions.isEmpty) {
       return Scaffold(

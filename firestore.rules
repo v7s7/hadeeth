@@ -1,0 +1,47 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superAdmin';
+    }
+
+    // الأحاديث: قراءة عامة (تشمل الزوار)، والكتابة محصورة بالمشرف العام.
+    match /hadiths/{hadithId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // التصنيفات: قراءة عامة، والكتابة محصورة بالمشرف العام.
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // ملفات تعريف المستخدمين (الدور وحالة الحساب).
+    match /users/{userId} {
+      // القراءة: المستخدم لنفسه، أو المشرف العام لأي ملف.
+      allow read: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
+
+      // الإنشاء: المستخدم لنفسه فقط، ولا يمكنه تعيين نفسه كمشرف عام.
+      allow create: if isSignedIn() && request.auth.uid == userId
+        && request.resource.data.role == 'user';
+
+      // التعديل: المشرف العام لأي حقل، أو المستخدم لنفسه بشرط عدم تغيير
+      // role أو isDisabled (يمنع ترقية/تفعيل النفس).
+      allow update: if isSuperAdmin() ||
+        (isSignedIn() && request.auth.uid == userId
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.isDisabled == resource.data.isDisabled);
+
+      // الحذف: المشرف العام فقط.
+      allow delete: if isSuperAdmin();
+    }
+  }
+}

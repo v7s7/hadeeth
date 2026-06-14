@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../data/categories_data.dart';
 import '../../models/hadith.dart';
+import '../../services/category_repository.dart';
 import '../../services/hadith_repository.dart';
 import '../../services/progress_service.dart';
 import '../../theme/app_colors.dart';
@@ -23,8 +23,6 @@ class HadithDetailsScreen extends StatefulWidget {
 }
 
 class _HadithDetailsScreenState extends State<HadithDetailsScreen> {
-  final HadithRepository _repository = HadithRepository();
-
   @override
   void initState() {
     super.initState();
@@ -32,11 +30,12 @@ class _HadithDetailsScreenState extends State<HadithDetailsScreen> {
   }
 
   Future<void> _trackRead() async {
-    final hadith = _repository.getById(widget.hadithId);
+    final repository = context.read<HadithRepository>();
+    final hadith = repository.getById(widget.hadithId);
     if (hadith == null) return;
 
     final progressService = context.read<ProgressService>();
-    final isHadithOfDay = hadith.id == _repository.hadithOfTheDay().id;
+    final isHadithOfDay = hadith.id == repository.hadithOfTheDay().id;
     final xpGained = await progressService.recordHadithRead(
       hadith.id,
       isHadithOfTheDay: isHadithOfDay,
@@ -62,7 +61,8 @@ class _HadithDetailsScreenState extends State<HadithDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hadith = _repository.getById(widget.hadithId);
+    final repository = context.watch<HadithRepository>();
+    final hadith = repository.getById(widget.hadithId);
 
     if (hadith == null) {
       return Scaffold(
@@ -77,7 +77,7 @@ class _HadithDetailsScreenState extends State<HadithDetailsScreen> {
     final progressService = context.watch<ProgressService>();
     final isFavorite = progressService.isFavorite(hadith.id);
     final isLearned = progressService.isLearned(hadith.id);
-    final category = categoryById(hadith.categoryId);
+    final category = context.watch<CategoryRepository>().categoryById(hadith.categoryId);
 
     return Scaffold(
       appBar: AppBar(

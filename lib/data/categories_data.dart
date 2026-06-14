@@ -1,53 +1,45 @@
-import 'package:flutter/material.dart';
-
 import '../models/hadith_category.dart';
 
+/// التصنيفات الافتراضية (Seed data)، تُستخدم عند عدم توفر بيانات من Firestore.
 const List<HadithCategory> hadithCategories = [
   HadithCategory(
     id: 'abandoned_sunnah',
     nameAr: 'السنن المهجورة',
-    icon: Icons.auto_awesome_outlined,
+    iconKey: 'auto_awesome_outlined',
   ),
   HadithCategory(
     id: 'manners',
     nameAr: 'الأخلاق',
-    icon: Icons.favorite_outline,
+    iconKey: 'favorite_outline',
   ),
   HadithCategory(
     id: 'prayer',
     nameAr: 'الصلاة',
-    icon: Icons.mosque_outlined,
+    iconKey: 'mosque_outlined',
   ),
   HadithCategory(
     id: 'remembrance',
     nameAr: 'الذكر',
-    icon: Icons.menu_book_outlined,
+    iconKey: 'menu_book_outlined',
   ),
   HadithCategory(
     id: 'knowledge',
     nameAr: 'العلم',
-    icon: Icons.school_outlined,
+    iconKey: 'school_outlined',
   ),
   HadithCategory(
     id: 'transactions',
     nameAr: 'المعاملات',
-    icon: Icons.handshake_outlined,
+    iconKey: 'handshake_outlined',
   ),
   HadithCategory(
     id: 'sincerity',
     nameAr: 'النية والإخلاص',
-    icon: Icons.spa_outlined,
+    iconKey: 'spa_outlined',
   ),
   HadithCategory(
     id: 'daily_manners',
     nameAr: 'الآداب اليومية',
-    icon: Icons.wb_sunny_outlined,
+    iconKey: 'wb_sunny_outlined',
   ),
 ];
-
-HadithCategory? categoryById(String id) {
-  for (final category in hadithCategories) {
-    if (category.id == id) return category;
-  }
-  return null;
-}

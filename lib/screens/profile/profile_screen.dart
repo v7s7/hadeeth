@@ -48,7 +48,7 @@ class ProfileScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => session.completeSignIn('مستخدم جديد'),
+                  onPressed: () => context.push('/login'),
                   icon: const Icon(Icons.login),
                   label: const Text('تسجيل الدخول'),
                 ),
@@ -87,6 +87,13 @@ class ProfileScreen extends StatelessWidget {
               subtitle: 'الإنجازات، الإحصائيات والنشاط الأسبوعي',
               onTap: () => context.push('/progress'),
             ),
+            if (session.isSuperAdmin)
+              _MenuTile(
+                icon: Icons.admin_panel_settings_outlined,
+                title: 'لوحة التحكم',
+                subtitle: 'إدارة الأحاديث والتصنيفات والمستخدمين',
+                onTap: () => context.push('/admin'),
+              ),
             _MenuTile(
               icon: Icons.notifications_outlined,
               title: 'تذكير حديث اليوم',
@@ -155,7 +162,25 @@ class _ProfileHeader extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(name, style: AppTextStyles.screenTitle),
+            Row(
+              children: [
+                Text(name, style: AppTextStyles.screenTitle),
+                if (session.isSuperAdmin) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentLight,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'مشرف عام',
+                      style: AppTextStyles.badge.copyWith(color: AppColors.accent),
+                    ),
+                  ),
+                ],
+              ],
+            ),
             const SizedBox(height: 4),
             Text(
               session.isGuest ? 'وضع الزائر' : 'حساب مسجّل',

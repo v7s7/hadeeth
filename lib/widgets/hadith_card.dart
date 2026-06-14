@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../data/categories_data.dart';
 import '../models/hadith.dart';
+import '../services/category_repository.dart';
 import '../services/progress_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
@@ -18,7 +18,7 @@ class HadithCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final category = categoryById(hadith.categoryId);
+    final category = context.watch<CategoryRepository>().categoryById(hadith.categoryId);
     final progressService = context.watch<ProgressService>();
     final isFavorite = progressService.isFavorite(hadith.id);
 
