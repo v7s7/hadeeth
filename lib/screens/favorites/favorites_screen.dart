@@ -23,18 +23,25 @@ class FavoritesScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('المفضلة')),
       body: SafeArea(
-        child: hadiths.isEmpty
-            ? const EmptyState(
-                imagePath: 'assets/images/empty_states/empty_favorites.png',
-                title: 'لا توجد أحاديث محفوظة',
-                subtitle: 'اضغط على أيقونة الحفظ في أي حديث لإضافته هنا',
-              )
-            : ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: hadiths.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) => HadithCard(hadith: hadiths[index]),
-              ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final side = constraints.maxWidth > 900
+                ? (constraints.maxWidth - 900) / 2
+                : 0.0;
+            return hadiths.isEmpty
+                ? const EmptyState(
+                    imagePath: 'assets/images/empty_states/empty_favorites.png',
+                    title: 'لا توجد أحاديث محفوظة',
+                    subtitle: 'اضغط على أيقونة الحفظ في أي حديث لإضافته هنا',
+                  )
+                : ListView.separated(
+                    padding: EdgeInsets.fromLTRB(side + 16, 16, side + 16, 16),
+                    itemCount: hadiths.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) => HadithCard(hadith: hadiths[index]),
+                  );
+          },
+        ),
       ),
     );
   }

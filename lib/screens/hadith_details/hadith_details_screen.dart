@@ -9,6 +9,7 @@ import '../../services/progress_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/abandoned_badge.dart';
+import '../../widgets/completion_overlay.dart';
 import '../../widgets/empty_state.dart';
 
 /// شاشة تفاصيل الحديث: النص الكامل، الراوي، المصدر، الشرح، الفوائد،
@@ -51,8 +52,12 @@ class _HadithDetailsScreenState extends State<HadithDetailsScreen> {
     final xpGained = await progressService.markHadithLearned(hadith.id);
     if (!mounted) return;
 
-    final message = xpGained > 0 ? '+$xpGained XP - أحسنت!' : 'تم تسجيل هذا الحديث كمتعلم';
-    _showSnackBar(message);
+    final newStreak = progressService.progress.currentStreak;
+    await showCompletionOverlay(
+      context: context,
+      xpGained: xpGained,
+      newStreak: newStreak,
+    );
   }
 
   void _showSnackBar(String message) {

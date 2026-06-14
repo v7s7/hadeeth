@@ -4,6 +4,7 @@ import '../screens/admin/admin_categories_screen.dart';
 import '../screens/admin/admin_hadith_form_screen.dart';
 import '../screens/admin/admin_hadiths_screen.dart';
 import '../screens/admin/admin_home_screen.dart';
+import '../screens/admin/admin_notifications_screen.dart';
 import '../screens/admin/admin_users_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
@@ -11,6 +12,7 @@ import '../screens/categories/category_hadiths_screen.dart';
 import '../screens/hadith_details/hadith_details_screen.dart';
 import '../screens/progress/progress_screen.dart';
 import '../screens/quiz/quiz_screen.dart';
+import '../screens/onboarding/onboarding_screen.dart';
 import '../screens/root/root_shell.dart';
 import '../screens/splash/splash_screen.dart';
 
@@ -21,6 +23,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/',
       builder: (context, state) => const SplashScreen(),
+    ),
+    GoRoute(
+      path: '/onboarding',
+      builder: (context, state) => const OnboardingScreen(),
     ),
     GoRoute(
       path: '/home',
@@ -81,6 +87,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/admin/users',
       builder: (context, state) => const AdminUsersScreen(),
+    ),
+    GoRoute(
+      path: '/admin/notifications',
+      builder: (context, state) => const AdminNotificationsScreen(),
     ),
   ],
 );

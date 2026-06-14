@@ -83,6 +83,43 @@ class UserProgress {
     );
   }
 
+  /// يدمج تقدّمَين معًا بأخذ الأعلى في كل حقل رقمي، واتحاد القوائم.
+  /// مفيد عند تسجيل دخول مستخدم لدمج بياناته المحلية مع ما في السحابة.
+  UserProgress merge(UserProgress other) {
+    return UserProgress(
+      totalXp: totalXp > other.totalXp ? totalXp : other.totalXp,
+      currentStreak:
+          currentStreak > other.currentStreak ? currentStreak : other.currentStreak,
+      longestStreak:
+          longestStreak > other.longestStreak ? longestStreak : other.longestStreak,
+      lastActivityDate:
+          (lastActivityDate != null && other.lastActivityDate != null)
+              ? (lastActivityDate!.isAfter(other.lastActivityDate!)
+                  ? lastActivityDate
+                  : other.lastActivityDate)
+              : (lastActivityDate ?? other.lastActivityDate),
+      readHadithIds: {...readHadithIds, ...other.readHadithIds},
+      learnedHadithIds: {...learnedHadithIds, ...other.learnedHadithIds},
+      savedHadithIds: {...savedHadithIds, ...other.savedHadithIds},
+      quizzesCompleted: quizzesCompleted > other.quizzesCompleted
+          ? quizzesCompleted
+          : other.quizzesCompleted,
+      quizCorrectAnswers: quizCorrectAnswers > other.quizCorrectAnswers
+          ? quizCorrectAnswers
+          : other.quizCorrectAnswers,
+      quizTotalAnswers: quizTotalAnswers > other.quizTotalAnswers
+          ? quizTotalAnswers
+          : other.quizTotalAnswers,
+      // نحتفظ بقيم الجهاز الحالي لليوم الحالي.
+      dailyXpEarned: dailyXpEarned,
+      lastXpDate: lastXpDate,
+      dailyActivityXp: {
+        ...other.dailyActivityXp,
+        ...dailyActivityXp, // يُقدَّم الجهاز الحالي في حالة تداخل التواريخ.
+      },
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'totalXp': totalXp,
         'currentStreak': currentStreak,

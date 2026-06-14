@@ -34,79 +34,87 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('الحديث المهجور')),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            if (session.isGuest) ...[
-              const GuestBanner(),
-              const SizedBox(height: 16),
-            ],
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // على الشاشات العريضة: اجعل المحتوى بحد أقصى 900px في المنتصف.
+            final side = constraints.maxWidth > 900
+                ? (constraints.maxWidth - 900) / 2
+                : 0.0;
+            return ListView(
+              padding: EdgeInsets.fromLTRB(side + 16, 16, side + 16, 16),
               children: [
-                StreakBadge(streak: progress.currentStreak),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: XpProgressBar(
-                    currentLevel: progressService.currentLevel,
-                    nextLevel: progressService.nextLevel,
-                    totalXp: progress.totalXp,
-                    progress: progressService.levelProgressValue,
+                if (session.isGuest) ...[
+                  const GuestBanner(),
+                  const SizedBox(height: 16),
+                ],
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    StreakBadge(streak: progress.currentStreak),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: XpProgressBar(
+                        currentLevel: progressService.currentLevel,
+                        nextLevel: progressService.nextLevel,
+                        totalXp: progress.totalXp,
+                        progress: progressService.levelProgressValue,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _HadithOfDayCard(hadith: hadithOfDay),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => context.push('/hadith/${hadithOfDay.id}'),
+                        child: const Text('ابدأ التعلم'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => context.push('/quiz/${hadithOfDay.id}'),
+                        child: const Text('اختبر نفسك'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                SectionHeader(
+                  title: 'أحاديث مهجورة',
+                  onSeeAll: () => context.push('/category/abandoned_sunnah'),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 188,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: abandoned.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) =>
+                        HadithCard(hadith: abandoned[index], width: 230),
                   ),
                 ),
+                const SizedBox(height: 28),
+                const SectionHeader(title: 'آخر ما أضيف'),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 188,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: recent.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) =>
+                        HadithCard(hadith: recent[index], width: 230),
+                  ),
+                ),
+                const SizedBox(height: 16),
               ],
-            ),
-            const SizedBox(height: 20),
-            _HadithOfDayCard(hadith: hadithOfDay),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => context.push('/hadith/${hadithOfDay.id}'),
-                    child: const Text('ابدأ التعلم'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => context.push('/quiz/${hadithOfDay.id}'),
-                    child: const Text('اختبر نفسك'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 28),
-            SectionHeader(
-              title: 'أحاديث مهجورة',
-              onSeeAll: () => context.push('/category/abandoned_sunnah'),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 188,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: abandoned.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (context, index) =>
-                    HadithCard(hadith: abandoned[index], width: 230),
-              ),
-            ),
-            const SizedBox(height: 28),
-            const SectionHeader(title: 'آخر ما أضيف'),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 188,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: recent.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (context, index) =>
-                    HadithCard(hadith: recent[index], width: 230),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
+            );
+          },
         ),
       ),
     );

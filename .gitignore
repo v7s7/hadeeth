@@ -5,9 +5,11 @@
 *.swp
 .DS_Store
 .atom/
+.build/
 .buildlog/
 .history
 .svn/
+.swiftpm/
 migrate_working_dir/
 
 # IntelliJ related
@@ -43,3 +45,8 @@ app.*.map.json
 /macos/
 /linux/
 /windows/
+
+# Firebase service account keys — never commit
+*firebase-adminsdk*.json
+service-account*.json
+.firebase/

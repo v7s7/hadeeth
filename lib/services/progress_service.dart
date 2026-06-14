@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../data/levels_data.dart';
@@ -7,8 +11,15 @@ import 'local_storage_service.dart';
 
 /// يحتفظ بتقدّم المستخدم ويطبّق قواعد نظام النقاط (XP) والمستويات والسلسلة
 /// اليومية (Streak) كما هي محددة في مواصفات المشروع.
+///
+/// التخزين:
+/// - دائمًا: SharedPreferences (يعمل بدون إنترنت وبدون حساب).
+/// - عند تسجيل الدخول: يُدمج التقدّم المحلي مع Firestore (`users/{uid}/progress/data`)
+///   ثم يُزامن كل تغيير مع السحابة تلقائيًا.
 class ProgressService extends ChangeNotifier {
-  ProgressService(this._storage);
+  ProgressService(this._storage) {
+    _listenToAuth();
+  }
 
   // قيم نظام النقاط من المواصفات.
   static const int dailyXpCap = 40;
@@ -22,6 +33,8 @@ class ProgressService extends ChangeNotifier {
   final LocalStorageService _storage;
   UserProgress _progress = UserProgress.initial();
   bool _isLoaded = false;
+  String? _currentUid;
+  StreamSubscription<User?>? _authSub;
 
   UserProgress get progress => _progress;
   bool get isLoaded => _isLoaded;
@@ -30,11 +43,63 @@ class ProgressService extends ChangeNotifier {
   AppLevel? get nextLevel => nextLevelForXp(_progress.totalXp);
   double get levelProgressValue => levelProgress(_progress.totalXp);
 
+  // ────────────────────────── Auth listener ──────────────────────────
+
+  void _listenToAuth() {
+    try {
+      _authSub = FirebaseAuth.instance.authStateChanges().listen((user) async {
+        if (user == null) {
+          // تسجيل خروج: أعد تحميل البيانات المحلية.
+          if (_currentUid != null) {
+            _currentUid = null;
+            _progress = await _storage.loadProgress();
+            _isLoaded = true;
+            notifyListeners();
+          }
+        } else if (user.uid != _currentUid) {
+          // تسجيل دخول بحساب جديد: ادمج المحلي مع السحابة.
+          _currentUid = user.uid;
+          await _mergeWithCloud(user.uid);
+        }
+      }, onError: (_) {});
+    } catch (_) {
+      // Firebase غير مهيّأ؛ يستمر التطبيق بالتخزين المحلي.
+    }
+  }
+
+  /// يحمّل بيانات التقدّم عند أول تشغيل.
   Future<void> load() async {
     _progress = await _storage.loadProgress();
     _isLoaded = true;
     notifyListeners();
   }
+
+  // ────────────────────────── Firestore sync ──────────────────────────
+
+  /// يدمج التقدّم المحلي مع ما في Firestore ويحفظ النتيجة في كليهما.
+  Future<void> _mergeWithCloud(String uid) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('progress')
+          .doc('data')
+          .get();
+
+      if (doc.exists && doc.data() != null) {
+        final cloud = UserProgress.fromJson(doc.data()!);
+        _progress = _progress.merge(cloud);
+      }
+    } catch (_) {
+      // تعذّر الوصول إلى Firestore؛ نكمل بالبيانات المحلية.
+    }
+
+    _isLoaded = true;
+    notifyListeners();
+    await _persist();
+  }
+
+  // ────────────────────────── Public API ──────────────────────────
 
   bool isFavorite(String hadithId) =>
       _progress.savedHadithIds.contains(hadithId);
@@ -123,8 +188,27 @@ class ProgressService extends ChangeNotifier {
     });
   }
 
-  /// يضيف نقاطًا مع احترام الحد اليومي (40 نقطة)، ويعيد عدد النقاط
-  /// المضافة فعليًا بعد الأخذ بالحد الأقصى بعين الاعتبار.
+  // ────────────────────────── Private helpers ──────────────────────────
+
+  Future<void> _persist() async {
+    await _storage.saveProgress(_progress);
+
+    if (_currentUid != null) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(_currentUid)
+            .collection('progress')
+            .doc('data')
+            .set(_progress.toJson());
+      } catch (_) {
+        // الحفظ المحلي نجح؛ سيُعاد المحاولة عند أول اتصال.
+      }
+    }
+
+    notifyListeners();
+  }
+
   int _addXp(int amount) {
     if (amount <= 0) return 0;
 
@@ -159,7 +243,6 @@ class ProgressService extends ChangeNotifier {
     return granted;
   }
 
-  /// يحدّث السلسلة اليومية عند أول نشاط مؤهل في اليوم، ويمنح مكافأة +5 XP.
   int _registerStreakActivity() {
     final now = DateTime.now();
     final todayKey = _dateKey(now);
@@ -195,8 +278,9 @@ class ProgressService extends ChangeNotifier {
         '${date.day.toString().padLeft(2, '0')}';
   }
 
-  Future<void> _persist() async {
-    await _storage.saveProgress(_progress);
-    notifyListeners();
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
   }
 }

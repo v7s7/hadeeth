@@ -1,12 +1,13 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../services/local_storage_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 
-/// شاشة البداية: شعار التطبيق واسمه قبل التحويل إلى الشاشة الرئيسية.
+/// شاشة البداية: شعار التطبيق واسمه ثم التحويل إلى:
+/// - شاشة الترحيب (أول تشغيل)
+/// - الشاشة الرئيسية (التشغيلات اللاحقة)
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -15,20 +16,27 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  Timer? _timer;
-
   @override
   void initState() {
     super.initState();
-    _timer = Timer(const Duration(milliseconds: 1400), () {
-      if (mounted) context.go('/home');
-    });
+    _navigate();
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
+  Future<void> _navigate() async {
+    // عرض شاشة البداية لفترة كافية ثم الانتقال.
+    await Future.delayed(const Duration(milliseconds: 1400));
+    if (!mounted) return;
+
+    final storage = LocalStorageService();
+    final hasSeenOnboarding = await storage.hasSeenOnboarding();
+
+    if (!mounted) return;
+    if (hasSeenOnboarding) {
+      context.go('/home');
+    } else {
+      await storage.markOnboardingComplete();
+      context.go('/onboarding');
+    }
   }
 
   @override
@@ -43,6 +51,11 @@ class _SplashScreenState extends State<SplashScreen> {
               'assets/images/branding/splash_illustration.png',
               width: 240,
               fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) => const Icon(
+                Icons.menu_book,
+                size: 120,
+                color: Colors.white54,
+              ),
             ),
             const SizedBox(height: 16),
             Text(

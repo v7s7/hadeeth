@@ -43,5 +43,16 @@ service cloud.firestore {
       // الحذف: المشرف العام فقط.
       allow delete: if isSuperAdmin();
     }
+
+    // الإشعارات المجمّعة: كتابة وقراءة للمشرف العام فقط.
+    match /broadcasts/{broadcastId} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    // إعدادات التطبيق (مفتاح FCM وغيره): للمشرف العام فقط.
+    match /config/{docId} {
+      allow read: if isSuperAdmin();
+      allow write: if false; // يُعدَّل من Firebase Console فقط
+    }
   }
 }

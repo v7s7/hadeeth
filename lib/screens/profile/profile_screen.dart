@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../services/local_storage_service.dart';
+import '../../services/notification_service.dart';
 import '../../services/progress_service.dart';
 import '../../services/session_service.dart';
 import '../../theme/app_colors.dart';
@@ -10,13 +12,84 @@ import '../../widgets/guest_banner.dart';
 import '../../widgets/streak_badge.dart';
 
 /// شاشة حسابي: بيانات المستخدم، ملخص التقدم، الإعدادات، ومعلومات التطبيق.
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
-  void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('هذه الميزة قيد التطوير')),
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final _storage = LocalStorageService();
+  bool _notifEnabled = false;
+  int _notifHour = 8;
+  int _notifMinute = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifPrefs();
+  }
+
+  Future<void> _loadNotifPrefs() async {
+    final enabled = await _storage.areNotificationsEnabled();
+    final hour = await _storage.getNotificationHour();
+    final minute = await _storage.getNotificationMinute();
+    if (mounted) {
+      setState(() {
+        _notifEnabled = enabled;
+        _notifHour = hour;
+        _notifMinute = minute;
+      });
+    }
+  }
+
+  Future<void> _toggleNotifications(bool value) async {
+    if (value) {
+      final granted = await NotificationService.requestPermission();
+      if (!granted) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('يرجى السماح بالإشعارات من إعدادات الجهاز'),
+          ),
+        );
+        return;
+      }
+      await NotificationService.scheduleDailyReminder(
+        TimeOfDay(hour: _notifHour, minute: _notifMinute),
+      );
+    } else {
+      await NotificationService.cancelReminder();
+    }
+
+    await _storage.setNotificationsEnabled(value);
+    if (mounted) setState(() => _notifEnabled = value);
+  }
+
+  Future<void> _pickNotificationTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: _notifHour, minute: _notifMinute),
+      helpText: 'اختر وقت التذكير',
+      builder: (context, child) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: child!,
+      ),
     );
+
+    if (picked == null || !mounted) return;
+
+    setState(() {
+      _notifHour = picked.hour;
+      _notifMinute = picked.minute;
+    });
+
+    await _storage.saveNotificationTime(picked.hour, picked.minute);
+
+    if (_notifEnabled) {
+      await NotificationService.scheduleDailyReminder(picked);
+    }
   }
 
   void _showInfoSheet(BuildContext context, String title, String body) {
@@ -32,12 +105,20 @@ class ProfileScreen extends StatelessWidget {
     final progressService = context.watch<ProgressService>();
     final progress = progressService.progress;
 
+    final notifTimeLabel =
+        '${_notifHour.toString().padLeft(2, '0')}:${_notifMinute.toString().padLeft(2, '0')}';
+
     return Scaffold(
       appBar: AppBar(title: const Text('حسابي')),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final side = constraints.maxWidth > 900
+                ? (constraints.maxWidth - 900) / 2
+                : 0.0;
+            return ListView(
+              padding: EdgeInsets.fromLTRB(side + 16, 16, side + 16, 16),
+              children: [
             _ProfileHeader(session: session),
             const SizedBox(height: 16),
             if (session.isGuest) ...[
@@ -72,7 +153,10 @@ class ProfileScreen extends StatelessWidget {
                             style: AppTextStyles.bodyBold,
                           ),
                           const SizedBox(height: 4),
-                          Text('${progress.totalXp} نقطة خبرة', style: AppTextStyles.caption),
+                          Text(
+                            '${progress.totalXp} نقطة خبرة',
+                            style: AppTextStyles.caption,
+                          ),
                         ],
                       ),
                     ),
@@ -94,12 +178,51 @@ class ProfileScreen extends StatelessWidget {
                 subtitle: 'إدارة الأحاديث والتصنيفات والمستخدمين',
                 onTap: () => context.push('/admin'),
               ),
-            _MenuTile(
-              icon: Icons.notifications_outlined,
-              title: 'تذكير حديث اليوم',
-              subtitle: 'إشعار يومي بحديث جديد (قريبًا)',
-              onTap: () => _showComingSoon(context),
+
+            // ── تذكير يومي ──
+            Card(
+              margin: const EdgeInsets.only(bottom: 10),
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    secondary: const Icon(
+                      Icons.notifications_outlined,
+                      color: AppColors.primary,
+                    ),
+                    title: Text(
+                      'تذكير حديث اليوم',
+                      style: AppTextStyles.bodyBold,
+                    ),
+                    subtitle: Text(
+                      _notifEnabled
+                          ? 'مفعّل يوميًا في $notifTimeLabel'
+                          : 'غير مفعّل',
+                      style: AppTextStyles.caption,
+                    ),
+                    value: _notifEnabled,
+                    activeColor: AppColors.primary,
+                    onChanged: _toggleNotifications,
+                  ),
+                  if (_notifEnabled) ...[
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                    ListTile(
+                      leading: const Icon(
+                        Icons.access_time,
+                        color: AppColors.primary,
+                      ),
+                      title: Text('وقت التذكير', style: AppTextStyles.body),
+                      trailing: Text(
+                        notifTimeLabel,
+                        style: AppTextStyles.bodyBold
+                            .copyWith(color: AppColors.primary),
+                      ),
+                      onTap: _pickNotificationTime,
+                    ),
+                  ],
+                ],
+              ),
             ),
+
             _MenuTile(
               icon: Icons.info_outline,
               title: 'عن التطبيق',
@@ -132,6 +255,8 @@ class ProfileScreen extends StatelessWidget {
                 onTap: () => session.signOut(),
               ),
           ],
+            );
+          },
         ),
       ),
     );
@@ -168,14 +293,16 @@ class _ProfileHeader extends StatelessWidget {
                 if (session.isSuperAdmin) ...[
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: AppColors.accentLight,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       'مشرف عام',
-                      style: AppTextStyles.badge.copyWith(color: AppColors.accentDark),
+                      style: AppTextStyles.badge
+                          .copyWith(color: AppColors.accentDark),
                     ),
                   ),
                 ],
@@ -214,8 +341,13 @@ class _MenuTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
         leading: Icon(icon, color: titleColor ?? AppColors.primary),
-        title: Text(title, style: AppTextStyles.bodyBold.copyWith(color: titleColor)),
-        subtitle: subtitle != null ? Text(subtitle!, style: AppTextStyles.caption) : null,
+        title: Text(
+          title,
+          style: AppTextStyles.bodyBold.copyWith(color: titleColor),
+        ),
+        subtitle: subtitle != null
+            ? Text(subtitle!, style: AppTextStyles.caption)
+            : null,
         trailing: const Icon(Icons.chevron_left),
         onTap: onTap,
       ),
