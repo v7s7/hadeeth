@@ -33,9 +33,10 @@ Git عبر `.gitignore` حاليًا.
 
 ## إعداد Firebase
 
-نسخة الويب من التطبيق مربوطة فعليًا بمشروع Firebase باسم `hadeeth-19906`
-(الإعدادات في `lib/firebase_options.dart`، تحت `DefaultFirebaseOptions.web`).
-لتفعيل تسجيل الدخول والمزامنة بالكامل، أكمل التالي من
+نسختا الويب و iOS من التطبيق مربوطتان فعليًا بمشروع Firebase باسم
+`hadeeth-19906` (الإعدادات في `lib/firebase_options.dart`، تحت
+`DefaultFirebaseOptions.web` و `DefaultFirebaseOptions.ios`، ببُعد التطبيق
+`com.hadeeth.app`). لتفعيل تسجيل الدخول والمزامنة بالكامل، أكمل التالي من
 [Firebase Console](https://console.firebase.google.com/project/hadeeth-19906):
 
 1. من **Authentication → Sign-in method**، فعّل مزوّد **Email/Password**.
@@ -46,14 +47,19 @@ Git عبر `.gitignore` حاليًا.
    ```
    (أو نسخ محتوى الملف يدويًا إلى تبويب **Rules** في Firestore Console).
 
-> لتشغيل التطبيق على Android/iOS بنفس المشروع، ثبّت FlutterFire CLI وشغّل
-> `flutterfire configure` — يضبط إعدادات `android`/`ios` في
-> `lib/firebase_options.dart` دون التأثير على إعدادات `web` الحالية، ويضيف
-> ملفات إعداد المنصّات (`google-services.json`، `GoogleService-Info.plist`، ...):
+> لتشغيل التطبيق على Android بنفس المشروع، ثبّت FlutterFire CLI وشغّل
+> `flutterfire configure` — يضبط إعدادات `android` في
+> `lib/firebase_options.dart` دون التأثير على إعدادات `web`/`ios` الحالية،
+> ويضيف ملف `google-services.json`:
 > ```bash
 > dart pub global activate flutterfire_cli
 > flutterfire configure
 > ```
+>
+> لـ iOS: عند تشغيل `flutter create . --org com.hadeeth --platforms=ios,android`
+> على جهاز Mac، ضع ملف `GoogleService-Info.plist` (الذي تم تنزيله من Firebase
+> Console لتطبيق `com.hadeeth.app`) داخل `ios/Runner/`. إعدادات
+> `DefaultFirebaseOptions.ios` نفسها مضبوطة مسبقًا في الكود.
 
 بدون تفعيل Authentication و Firestore أعلاه، يستمر التطبيق بالعمل بالبيانات
 المحلية التجريبية فقط (القراءة، الاختبارات، XP/السلسلة في وضع الضيف)، وتظهر
@@ -155,8 +161,8 @@ lib/
   والمستخدمين (الأدوار، تفعيل/تعطيل الحسابات).
 - قواعد أمان Firestore (`firestore.rules`) تحصر كل عمليات الكتابة على
   الأحاديث/التصنيفات بالمشرف العام، وتمنع المستخدمين من ترقية/تفعيل أنفسهم.
-- **ربط مشروع Firebase الحقيقي** (`hadeeth-19906`) لإعدادات الويب في
-  `lib/firebase_options.dart`.
+- **ربط مشروع Firebase الحقيقي** (`hadeeth-19906`) لإعدادات الويب و iOS
+  (`com.hadeeth.app`) في `lib/firebase_options.dart`.
 - **عرض الويب بحجم الهاتف**: على المتصفح، يُعرض التطبيق داخل عرض ثابت (430px)
   بمحاذاة الوسط لمحاكاة شاشة هاتف، مع خلفية حول الإطار (`lib/app.dart`).
 
@@ -167,11 +173,12 @@ lib/
 - يجب تفعيل **Email/Password** في Authentication، وإنشاء قاعدة **Firestore**،
   ونشر `firestore.rules` على مشروع `hadeeth-19906` قبل أن تعمل المصادقة
   والمزامنة فعليًا (انظر "إعداد Firebase" أعلاه).
-- إعدادات `android`/`ios` في `lib/firebase_options.dart` لا تزال قيمًا مؤقتة
+- إعدادات `android` في `lib/firebase_options.dart` لا تزال قيمًا مؤقتة
   (placeholders)؛ شغّل `flutterfire configure` لتفعيلها (انظر "إعداد
   Firebase" أعلاه).
 - مجلدات المنصّات (`android/`, `ios/`, ...) غير مولَّدة بعد - شغّل
-  `flutter create .` كما هو موضّح أعلاه.
+  `flutter create .` كما هو موضّح أعلاه. لـ iOS، ضع `GoogleService-Info.plist`
+  في `ios/Runner/` بعد ذلك (انظر "إعداد Firebase").
 
 ### تنويه بشأن المحتوى
 

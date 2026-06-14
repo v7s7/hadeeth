@@ -3,12 +3,13 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, Tar
 
 /// خيارات Firebase الافتراضية للتطبيق.
 ///
-/// تم ضبط إعدادات الويب (`web`) على مشروع Firebase الحقيقي `hadeeth-19906`.
-/// إعدادات Android و iOS ما زالت قيمًا مؤقتة (placeholders) إلى أن يتم تشغيل:
+/// تم ضبط إعدادات الويب (`web`) و iOS (`ios`) على مشروع Firebase الحقيقي
+/// `hadeeth-19906`. إعدادات Android ما زالت قيمًا مؤقتة (placeholders) إلى
+/// أن يتم تشغيل:
 ///
 ///   flutterfire configure
 ///
-/// والذي يستبدلها بقيم مشروعك الحقيقية لكل منصة دون التأثير على إعدادات الويب.
+/// والذي يستبدلها بقيم مشروعك الحقيقية دون التأثير على إعدادات web/ios.
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -43,9 +44,11 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'placeholder-api-key',
-    appId: 'placeholder-app-id',
-    messagingSenderId: 'placeholder-sender-id',
-    projectId: 'placeholder-project-id',
+    apiKey: 'AIzaSyB-M3K1erjUtyytBMKUj3KIRd4HSLGYyTk',
+    appId: '1:167885922779:ios:ccf12b56aa6753e24207fe',
+    messagingSenderId: '167885922779',
+    projectId: 'hadeeth-19906',
+    storageBucket: 'hadeeth-19906.firebasestorage.app',
+    iosBundleId: 'com.hadeeth.app',
   );
 }
