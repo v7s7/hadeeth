@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'routing/app_router.dart';
 import 'services/category_repository.dart';
+import 'services/font_size_service.dart';
 import 'services/hadith_repository.dart';
 import 'services/local_storage_service.dart';
 import 'services/progress_service.dart';
@@ -25,6 +26,9 @@ class HadeethApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CategoryRepository()),
         ChangeNotifierProvider(
           create: (context) => HadithRepository(context.read<CategoryRepository>()),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => FontSizeService()..load(),
         ),
       ],
       child: MaterialApp.router(

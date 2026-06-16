@@ -22,9 +22,29 @@ class NotificationService {
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
+  /// رسائل إشعار متنوعة — يتم اختيار واحدة كل يوم دوريًا.
+  static const List<String> _notifBodies = [
+    'حان وقت قراءة حديث اليوم 📖',
+    'سنّة منسية بانتظارك — دقيقتان تُحيي سنة ✨',
+    'مَن بلّغ حديثًا واحدًا عنه ﷺ فله أجر عظيم 🌟',
+    'استمر في سلسلتك اليومية ولا تنقطع عن العلم 🔥',
+    'حديث جديد ينتظرك اليوم — تعلّم وبلّغ 📚',
+    'العلم بالتعلّم — ابدأ حديث اليوم الآن 💡',
+    'دقيقة مع النبي ﷺ تُنير يومك كلّه ☀️',
+  ];
+
+  /// يختار رسالة بناءً على يوم السنة (يتغير كل يوم دوريًا).
+  static String _getTodaysBody() {
+    final dayOfYear = DateTime.now()
+        .difference(DateTime(DateTime.now().year, 1, 1))
+        .inDays;
+    return _notifBodies[dayOfYear % _notifBodies.length];
+  }
+
   /// يُهيَّأ مرة واحدة في [main] قبل تشغيل التطبيق.
   static Future<void> init() async {
     tz.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('Asia/Bahrain'));
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const ios = DarwinInitializationSettings(
@@ -38,10 +58,8 @@ class NotificationService {
     );
   }
 
-  /// يطلب إذن الإشعارات من المستخدم (iOS فقط، Android 13+ يحتاج إذنًا أيضًا).
-  /// يُعيد true إذا منح المستخدم الإذن.
+  /// يطلب إذن الإشعارات من المستخدم.
   static Future<bool> requestPermission() async {
-    // iOS
     final ios = _plugin
         .resolvePlatformSpecificImplementation<
             IOSFlutterLocalNotificationsPlugin>();
@@ -54,7 +72,6 @@ class NotificationService {
       return granted ?? false;
     }
 
-    // Android 13+
     final android = _plugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
@@ -66,8 +83,7 @@ class NotificationService {
     return false;
   }
 
-  /// يجدول إشعارًا يوميًا يتكرر في [time] كل يوم.
-  /// يُلغي أي جدولة سابقة أولاً.
+  /// يجدول إشعارًا يوميًا يتكرر في [time] كل يوم مع رسالة متنوعة.
   static Future<void> scheduleDailyReminder(TimeOfDay time) async {
     await _plugin.cancel(_dailyReminderId);
 
@@ -81,7 +97,6 @@ class NotificationService {
       time.minute,
     );
 
-    // إذا مرّ وقت الإشعار اليوم، ابدأ من الغد.
     if (scheduled.isBefore(now)) {
       scheduled = scheduled.add(const Duration(days: 1));
     }
@@ -89,7 +104,7 @@ class NotificationService {
     await _plugin.zonedSchedule(
       _dailyReminderId,
       'الحديث المهجور',
-      'حان وقت قراءة حديث اليوم 📖',
+      _getTodaysBody(),
       scheduled,
       NotificationDetails(
         android: const AndroidNotificationDetails(
@@ -113,12 +128,10 @@ class NotificationService {
     );
   }
 
-  /// يُلغي التذكير اليومي.
   static Future<void> cancelReminder() async {
     await _plugin.cancel(_dailyReminderId);
   }
 
-  /// يتحقق إذا كان الإذن ممنوحًا مسبقًا (Android فقط؛ iOS تُرجع true دائمًا هنا).
   static Future<bool> areNotificationsEnabled() async {
     final android = _plugin
         .resolvePlatformSpecificImplementation<

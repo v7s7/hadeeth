@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../models/app_user.dart';
 import '../../models/user_role.dart';
@@ -22,7 +23,7 @@ class AdminUsersScreen extends StatelessWidget {
       usersStream = null;
     }
 
-    return AdminGuard(
+    return SuperAdminGuard(
       child: Scaffold(
         appBar: AppBar(title: const Text('إدارة المستخدمين')),
         body: SafeArea(
@@ -164,6 +165,31 @@ class _UserCard extends StatelessWidget {
                   style: AppTextStyles.caption,
                 ),
               ),
+
+            // ── Audit button — visible for any admin/super-admin user ──
+            if (!isSelf &&
+                (user.role == UserRole.admin ||
+                    user.role == UserRole.superAdmin)) ...[
+              const Divider(height: 16),
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: OutlinedButton.icon(
+                  onPressed: () => context.push(
+                    '/admin/users/${user.id}/submissions',
+                    extra: user.displayName.isNotEmpty
+                        ? user.displayName
+                        : user.email,
+                  ),
+                  icon: const Icon(Icons.history_rounded, size: 16),
+                  label: const Text('سجل مقدّماته'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: BorderSide(
+                        color: AppColors.primary.withOpacity(0.4)),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

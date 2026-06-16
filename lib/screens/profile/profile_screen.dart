@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../services/font_size_service.dart';
 import '../../services/local_storage_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/progress_service.dart';
@@ -24,22 +25,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _notifEnabled = false;
   int _notifHour = 8;
   int _notifMinute = 0;
+  int _dailyGoal = 3;
 
   @override
   void initState() {
     super.initState();
-    _loadNotifPrefs();
+    _loadPrefs();
   }
 
-  Future<void> _loadNotifPrefs() async {
+  Future<void> _loadPrefs() async {
     final enabled = await _storage.areNotificationsEnabled();
     final hour = await _storage.getNotificationHour();
     final minute = await _storage.getNotificationMinute();
+    final goal = await _storage.getDailyGoal();
     if (mounted) {
       setState(() {
         _notifEnabled = enabled;
         _notifHour = hour;
         _notifMinute = minute;
+        _dailyGoal = goal;
       });
     }
   }
@@ -51,8 +55,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('يرجى السماح بالإشعارات من إعدادات الجهاز'),
-          ),
+              content: Text('يرجى السماح بالإشعارات من إعدادات الجهاز')),
         );
         return;
       }
@@ -62,7 +65,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } else {
       await NotificationService.cancelReminder();
     }
-
     await _storage.setNotificationsEnabled(value);
     if (mounted) setState(() => _notifEnabled = value);
   }
@@ -72,24 +74,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       initialTime: TimeOfDay(hour: _notifHour, minute: _notifMinute),
       helpText: 'اختر وقت التذكير',
-      builder: (context, child) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: child!,
-      ),
+      builder: (context, child) =>
+          Directionality(textDirection: TextDirection.rtl, child: child!),
     );
-
     if (picked == null || !mounted) return;
-
     setState(() {
       _notifHour = picked.hour;
       _notifMinute = picked.minute;
     });
-
     await _storage.saveNotificationTime(picked.hour, picked.minute);
-
     if (_notifEnabled) {
       await NotificationService.scheduleDailyReminder(picked);
     }
+  }
+
+  Future<void> _setDailyGoal(int goal) async {
+    setState(() => _dailyGoal = goal);
+    await _storage.setDailyGoal(goal);
+  }
+
+  Future<void> _buyStreakFreeze(ProgressService progressService) async {
+    final success = await progressService.buyStreakFreeze();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success
+            ? 'تم شراء تجميد السلسلة ✓'
+            : 'نقاطك غير كافية — تحتاج ${ProgressService.streakFreezeXpCost} XP'),
+      ),
+    );
   }
 
   void _showInfoSheet(BuildContext context, String title, String body) {
@@ -103,6 +116,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final session = context.watch<SessionService>();
     final progressService = context.watch<ProgressService>();
+    final fontService = context.watch<FontSizeService>();
     final progress = progressService.progress;
 
     final notifTimeLabel =
@@ -113,148 +127,342 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final side = constraints.maxWidth > 900
-                ? (constraints.maxWidth - 900) / 2
-                : 0.0;
+            final side =
+                constraints.maxWidth > 900 ? (constraints.maxWidth - 900) / 2 : 0.0;
             return ListView(
               padding: EdgeInsets.fromLTRB(side + 16, 16, side + 16, 16),
               children: [
-            _ProfileHeader(session: session),
-            const SizedBox(height: 16),
-            if (session.isGuest) ...[
-              const GuestBanner(
-                message: 'سجّل دخولك لحفظ تقدمك على جميع أجهزتك ومزامنة سلسلتك اليومية.',
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => context.push('/login'),
-                  icon: const Icon(Icons.login),
-                  label: const Text('تسجيل الدخول'),
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    StreakBadge(streak: progress.currentStreak),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'المستوى ${progressService.currentLevel.level} • '
-                            '${progressService.currentLevel.titleAr}',
-                            style: AppTextStyles.bodyBold,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${progress.totalXp} نقطة خبرة',
-                            style: AppTextStyles.caption,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            _MenuTile(
-              icon: Icons.bar_chart,
-              title: 'تقدّمي',
-              subtitle: 'الإنجازات، الإحصائيات والنشاط الأسبوعي',
-              onTap: () => context.push('/progress'),
-            ),
-            if (session.isSuperAdmin)
-              _MenuTile(
-                icon: Icons.admin_panel_settings_outlined,
-                title: 'لوحة التحكم',
-                subtitle: 'إدارة الأحاديث والتصنيفات والمستخدمين',
-                onTap: () => context.push('/admin'),
-              ),
-
-            // ── تذكير يومي ──
-            Card(
-              margin: const EdgeInsets.only(bottom: 10),
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    secondary: const Icon(
-                      Icons.notifications_outlined,
-                      color: AppColors.primary,
-                    ),
-                    title: Text(
-                      'تذكير حديث اليوم',
-                      style: AppTextStyles.bodyBold,
-                    ),
-                    subtitle: Text(
-                      _notifEnabled
-                          ? 'مفعّل يوميًا في $notifTimeLabel'
-                          : 'غير مفعّل',
-                      style: AppTextStyles.caption,
-                    ),
-                    value: _notifEnabled,
-                    activeColor: AppColors.primary,
-                    onChanged: _toggleNotifications,
+                _ProfileHeader(session: session),
+                const SizedBox(height: 16),
+                if (session.isGuest) ...[
+                  const GuestBanner(
+                    message:
+                        'سجّل دخولك لحفظ تقدمك على جميع أجهزتك ومزامنة سلسلتك اليومية.',
                   ),
-                  if (_notifEnabled) ...[
-                    const Divider(height: 1, indent: 16, endIndent: 16),
-                    ListTile(
-                      leading: const Icon(
-                        Icons.access_time,
-                        color: AppColors.primary,
-                      ),
-                      title: Text('وقت التذكير', style: AppTextStyles.body),
-                      trailing: Text(
-                        notifTimeLabel,
-                        style: AppTextStyles.bodyBold
-                            .copyWith(color: AppColors.primary),
-                      ),
-                      onTap: _pickNotificationTime,
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => context.push('/login'),
+                      icon: const Icon(Icons.login),
+                      label: const Text('تسجيل الدخول'),
                     ),
-                  ],
+                  ),
+                  const SizedBox(height: 20),
                 ],
-              ),
-            ),
 
-            _MenuTile(
-              icon: Icons.info_outline,
-              title: 'عن التطبيق',
-              onTap: () => _showInfoSheet(
-                context,
-                'عن التطبيق',
-                'الحديث المهجور هو تطبيق مجاني يهدف إلى تعريف المستخدمين بالأحاديث '
-                    'الصحيحة والسنن المهجورة، عبر القراءة اليومية، الشرح المبسّط، '
-                    'والاختبارات القصيرة، مع نظام نقاط وسلسلة تعلم يومية لتشجيع '
-                    'الاستمرارية.',
-              ),
-            ),
-            _MenuTile(
-              icon: Icons.privacy_tip_outlined,
-              title: 'سياسة الخصوصية',
-              onTap: () => _showInfoSheet(
-                context,
-                'سياسة الخصوصية',
-                'يحفظ التطبيق تقدّمك (النقاط، السلسلة اليومية، والأحاديث المحفوظة) '
-                    'على جهازك. عند تسجيل الدخول بحساب، تتم مزامنة هذه البيانات '
-                    'لحفظها وإتاحتها على أجهزتك الأخرى. لا تتم مشاركة بياناتك مع '
-                    'أي طرف ثالث.',
-              ),
-            ),
-            if (!session.isGuest)
-              _MenuTile(
-                icon: Icons.logout,
-                title: 'تسجيل الخروج',
-                titleColor: AppColors.error,
-                onTap: () => session.signOut(),
-              ),
-          ],
+                // ── ملخص التقدم ──
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        StreakBadge(
+                          streak: progress.currentStreak,
+                          multiplierLabel:
+                              progressService.streakMultiplierLabel,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'المستوى ${progressService.currentLevel.level} • '
+                                '${progressService.currentLevel.titleAr}',
+                                style: AppTextStyles.bodyBold,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${progress.totalXp} نقطة خبرة',
+                                style: AppTextStyles.caption,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _MenuTile(
+                  icon: Icons.bar_chart,
+                  title: 'تقدّمي',
+                  subtitle: 'الإنجازات، الإحصائيات والنشاط الأسبوعي',
+                  onTap: () => context.push('/progress'),
+                ),
+                if (session.isSuperAdmin)
+                  _MenuTile(
+                    icon: Icons.admin_panel_settings_outlined,
+                    title: 'لوحة التحكم',
+                    subtitle: 'إدارة الأحاديث والتصنيفات والمستخدمين',
+                    onTap: () => context.push('/admin'),
+                  ),
+
+                // ── حجم الخط ──────────────────────────────────────────────
+                Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Row(
+                          textDirection: TextDirection.rtl,
+                          children: [
+                            const Icon(Icons.format_size,
+                                color: AppColors.primary, size: 22),
+                            const SizedBox(width: 10),
+                            Text('حجم الخط', style: AppTextStyles.bodyBold),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: FontScaleOption.values.map((opt) {
+                            final selected = fontService.option == opt;
+                            return GestureDetector(
+                              onTap: () => fontService.setOption(opt),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 220),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 20, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: selected
+                                      ? AppColors.primary
+                                      : AppColors.primary.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: selected
+                                        ? AppColors.primary
+                                        : AppColors.primary.withOpacity(0.2),
+                                  ),
+                                ),
+                                child: Text(
+                                  opt.labelAr,
+                                  style: TextStyle(
+                                    color: selected
+                                        ? Colors.white
+                                        : AppColors.primary,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13 * opt.scale,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 10),
+                        // معاينة
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.04),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'إنما الأعمال بالنيات',
+                            style: AppTextStyles.hadithText.copyWith(
+                              fontSize: 18 * fontService.scale,
+                              color: Colors.white70,
+                            ),
+                            textAlign: TextAlign.right,
+                            textDirection: TextDirection.rtl,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // ── الهدف اليومي ───────────────────────────────────────────
+                Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Row(
+                          textDirection: TextDirection.rtl,
+                          children: [
+                            const Icon(Icons.flag_outlined,
+                                color: AppColors.primary, size: 22),
+                            const SizedBox(width: 10),
+                            Text('الهدف اليومي', style: AppTextStyles.bodyBold),
+                            const Spacer(),
+                            Text(
+                              '$_dailyGoal أحاديث',
+                              style: AppTextStyles.caption,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [1, 3, 5, 10].map((goal) {
+                            final selected = _dailyGoal == goal;
+                            return GestureDetector(
+                              onTap: () => _setDailyGoal(goal),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                width: 60,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: selected
+                                      ? AppColors.primary
+                                      : AppColors.primary.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: selected
+                                        ? AppColors.primary
+                                        : AppColors.primary.withOpacity(0.2),
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  '$goal',
+                                  style: TextStyle(
+                                    color: selected
+                                        ? Colors.white
+                                        : AppColors.primary,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // ── تجميد السلسلة ──────────────────────────────────────────
+                Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Row(
+                          textDirection: TextDirection.rtl,
+                          children: [
+                            const Text('🧊', style: TextStyle(fontSize: 20)),
+                            const SizedBox(width: 10),
+                            Text('تجميد السلسلة', style: AppTextStyles.bodyBold),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                '× ${progressService.streakFreezeCount}',
+                                style: AppTextStyles.badge
+                                    .copyWith(color: Colors.blue),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'يحمي سلسلتك اليومية لمدة يوم واحد عند انقطاعها.',
+                          style: AppTextStyles.caption,
+                          textDirection: TextDirection.rtl,
+                          textAlign: TextAlign.right,
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _buyStreakFreeze(progressService),
+                            icon: const Text('🧊'),
+                            label: Text(
+                                'شراء تجميد — ${ProgressService.streakFreezeXpCost} XP'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // ── تذكير يومي ──────────────────────────────────────────────
+                Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        secondary: const Icon(Icons.notifications_outlined,
+                            color: AppColors.primary),
+                        title: Text('تذكير حديث اليوم',
+                            style: AppTextStyles.bodyBold),
+                        subtitle: Text(
+                          _notifEnabled
+                              ? 'مفعّل يوميًا في $notifTimeLabel'
+                              : 'غير مفعّل',
+                          style: AppTextStyles.caption,
+                        ),
+                        value: _notifEnabled,
+                        activeColor: AppColors.primary,
+                        onChanged: _toggleNotifications,
+                      ),
+                      if (_notifEnabled) ...[
+                        const Divider(height: 1, indent: 16, endIndent: 16),
+                        ListTile(
+                          leading: const Icon(Icons.access_time,
+                              color: AppColors.primary),
+                          title: Text('وقت التذكير', style: AppTextStyles.body),
+                          trailing: Text(
+                            notifTimeLabel,
+                            style: AppTextStyles.bodyBold
+                                .copyWith(color: AppColors.primary),
+                          ),
+                          onTap: _pickNotificationTime,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                // ── معلومات ──────────────────────────────────────────────────
+                _MenuTile(
+                  icon: Icons.info_outline,
+                  title: 'عن التطبيق',
+                  onTap: () => _showInfoSheet(
+                    context,
+                    'عن التطبيق',
+                    'الحديث المهجور هو تطبيق مجاني يهدف إلى تعريف المستخدمين بالأحاديث '
+                        'الصحيحة والسنن المهجورة، عبر القراءة اليومية، الشرح المبسّط، '
+                        'والاختبارات القصيرة، مع نظام نقاط وسلسلة تعلم يومية لتشجيع '
+                        'الاستمرارية.',
+                  ),
+                ),
+                _MenuTile(
+                  icon: Icons.privacy_tip_outlined,
+                  title: 'سياسة الخصوصية',
+                  onTap: () => _showInfoSheet(
+                    context,
+                    'سياسة الخصوصية',
+                    'يحفظ التطبيق تقدّمك (النقاط، السلسلة اليومية، والأحاديث المحفوظة) '
+                        'على جهازك. عند تسجيل الدخول بحساب، تتم مزامنة هذه البيانات '
+                        'لحفظها وإتاحتها على أجهزتك الأخرى. لا تتم مشاركة بياناتك مع '
+                        'أي طرف ثالث.',
+                  ),
+                ),
+                if (!session.isGuest)
+                  _MenuTile(
+                    icon: Icons.logout,
+                    title: 'تسجيل الخروج',
+                    titleColor: AppColors.error,
+                    onTap: () => session.signOut(),
+                  ),
+              ],
             );
           },
         ),
@@ -262,6 +470,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
+
+// ── مكوّنات داخلية ───────────────────────────────────────────────────────────
 
 class _ProfileHeader extends StatelessWidget {
   final SessionService session;
@@ -271,7 +481,6 @@ class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = session.isGuest ? 'زائر' : (session.displayName ?? 'مستخدم');
-
     return Row(
       children: [
         CircleAvatar(
@@ -293,8 +502,8 @@ class _ProfileHeader extends StatelessWidget {
                 if (session.isSuperAdmin) ...[
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: AppColors.accentLight,
                       borderRadius: BorderRadius.circular(8),

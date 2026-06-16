@@ -68,7 +68,7 @@ class AdminHadithsScreen extends StatelessWidget {
       ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     final categoryRepository = context.watch<CategoryRepository>();
 
-    return AdminGuard(
+    return SuperAdminGuard(
       child: Scaffold(
         appBar: AppBar(title: const Text('إدارة الأحاديث')),
         floatingActionButton: FloatingActionButton(

@@ -6,7 +6,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 
 /// شاشة البداية: شعار التطبيق واسمه ثم التحويل إلى:
-/// - شاشة الترحيب (أول تشغيل)
+/// - شاشة اختيار الجنس (أول تشغيل — لم يكمل الترحيب)
 /// - الشاشة الرئيسية (التشغيلات اللاحقة)
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -23,19 +23,22 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _navigate() async {
-    // عرض شاشة البداية لفترة كافية ثم الانتقال.
-    await Future.delayed(const Duration(milliseconds: 1400));
-    if (!mounted) return;
-
     final storage = LocalStorageService();
-    final hasSeenOnboarding = await storage.hasSeenOnboarding();
+
+    // يُسخِّن الذاكرة المؤقتة وينتظر الحد الأدنى للعرض بالتوازي.
+    // بنهاية الانتظار تكون كل القيم في الذاكرة — لا انتظار إضافي بعدها.
+    await Future.wait([
+      Future.delayed(const Duration(milliseconds: 1400)),
+      storage.preload(),
+    ]);
 
     if (!mounted) return;
-    if (hasSeenOnboarding) {
+    final completed = LocalStorageService.cachedWelcome ?? false;
+
+    if (completed) {
       context.go('/home');
     } else {
-      await storage.markOnboardingComplete();
-      context.go('/onboarding');
+      context.go('/welcome');
     }
   }
 

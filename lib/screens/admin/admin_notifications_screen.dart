@@ -130,7 +130,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AdminGuard(
+    return SuperAdminGuard(
       child: Scaffold(
         appBar: AppBar(title: const Text('إشعارات المستخدمين')),
         body: SafeArea(
@@ -386,7 +386,7 @@ class _Field extends StatelessWidget {
         hintText: hint,
         hintStyle: AppTextStyles.caption,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: AppColors.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,

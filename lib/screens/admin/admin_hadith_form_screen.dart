@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +10,7 @@ import '../../models/quiz_question.dart';
 import '../../models/strange_word.dart';
 import '../../services/category_repository.dart';
 import '../../services/hadith_repository.dart';
+import '../../services/session_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import 'admin_guard.dart';
@@ -141,6 +144,7 @@ class _AdminHadithFormScreenState extends State<AdminHadithFormScreen> {
 
     setState(() => _isSaving = true);
 
+    final session = context.read<SessionService>();
     final repository = context.read<HadithRepository>();
     final now = DateTime.now();
     final existing = widget.hadithId != null ? repository.getById(widget.hadithId!) : null;
@@ -175,19 +179,42 @@ class _AdminHadithFormScreenState extends State<AdminHadithFormScreen> {
       isAbandonedSunnah: _isAbandonedSunnah,
       difficultyLevel: _difficultyLevel,
       quizQuestions: _quizQuestions.map((q) => q.toQuestion()).toList(),
-      status: _status,
+      status: session.isAdmin ? ContentStatus.draft : _status,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
-      publishedAt: _status == ContentStatus.published ? (existing?.publishedAt ?? now) : existing?.publishedAt,
+      publishedAt: _status == ContentStatus.published
+          ? (existing?.publishedAt ?? now)
+          : existing?.publishedAt,
     );
 
     try {
-      if (widget.hadithId == null) {
-        await repository.addHadith(hadith);
+      if (session.isAdmin) {
+        // مشرف محتوى: يُرسل إلى pending_hadiths للمراجعة
+        await FirebaseFirestore.instance.collection('pending_hadiths').add({
+          ...hadith.toMap(),
+          'submittedBy': FirebaseAuth.instance.currentUser?.uid ?? '',
+          'submittedAt': FieldValue.serverTimestamp(),
+          'reviewStatus': 'pending',
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('تم إرسال الحديث للمراجعة ✓ سيُنشر بعد موافقة المشرف العام'),
+              backgroundColor: AppColors.primary,
+            ),
+          );
+          context.pop();
+        }
       } else {
-        await repository.updateHadith(hadith);
+        // مشرف عام: ينشر مباشرة
+        if (widget.hadithId == null) {
+          await repository.addHadith(hadith);
+        } else {
+          await repository.updateHadith(hadith);
+        }
+        if (mounted) context.pop();
       }
-      if (mounted) context.pop();
     } catch (_) {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -319,6 +346,8 @@ class _AdminHadithFormScreenState extends State<AdminHadithFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final session = context.watch<SessionService>();
+    final isAdminMode = session.isAdmin;
     final categories = context.watch<CategoryRepository>().categories;
     final isEditing = widget.hadithId != null;
     final categoryIds = categories.map((c) => c.id).toSet();
@@ -326,7 +355,13 @@ class _AdminHadithFormScreenState extends State<AdminHadithFormScreen> {
 
     return AdminGuard(
       child: Scaffold(
-        appBar: AppBar(title: Text(isEditing ? 'تعديل الحديث' : 'حديث جديد')),
+        appBar: AppBar(
+          title: Text(
+            isAdminMode
+                ? 'إرسال حديث للمراجعة'
+                : (isEditing ? 'تعديل الحديث' : 'حديث جديد'),
+          ),
+        ),
         body: SafeArea(
           child: Form(
             key: _formKey,
@@ -386,15 +421,41 @@ class _AdminHadithFormScreenState extends State<AdminHadithFormScreen> {
                   onChanged: (value) => setState(() => _difficultyLevel = value ?? _difficultyLevel),
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<ContentStatus>(
-                  value: _status,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'حالة النشر'),
-                  items: ContentStatus.values
-                      .map((status) => DropdownMenuItem(value: status, child: Text(status.labelAr)))
-                      .toList(),
-                  onChanged: (value) => setState(() => _status = value ?? _status),
-                ),
+                if (!isAdminMode)
+                  DropdownButtonFormField<ContentStatus>(
+                    value: _status,
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'حالة النشر'),
+                    items: ContentStatus.values
+                        .map((status) =>
+                            DropdownMenuItem(value: status, child: Text(status.labelAr)))
+                        .toList(),
+                    onChanged: (value) =>
+                        setState(() => _status = value ?? _status),
+                  ),
+                if (isAdminMode)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFD97706).withOpacity(0.4)),
+                    ),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.info_outline_rounded,
+                            size: 16, color: Color(0xFFD97706)),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'سيُراجَع هذا الحديث من المشرف العام قبل نشره.',
+                            style: TextStyle(
+                                fontSize: 13, color: Color(0xFF92400E)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('من السنن المهجورة'),
@@ -465,7 +526,11 @@ class _AdminHadithFormScreenState extends State<AdminHadithFormScreen> {
                             width: 20,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
-                        : Text(isEditing ? 'حفظ التعديلات' : 'إضافة الحديث'),
+                        : Text(
+                            isAdminMode
+                                ? 'إرسال للمراجعة'
+                                : (isEditing ? 'حفظ التعديلات' : 'إضافة الحديث'),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 24),

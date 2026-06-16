@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/app_user.dart';
+import '../models/user_gender.dart';
 import '../models/user_role.dart';
 
 /// يمثل حالة جلسة المستخدم (ضيف أو مسجّل) باستخدام Firebase Auth.
@@ -75,6 +76,9 @@ class SessionService extends ChangeNotifier {
   /// المستخدم ضيف ما دام لم يسجّل الدخول.
   bool get isGuest => _user == null;
 
+  /// جنس المستخدم المسجَّل (null للضيف أو قبل إتمام الترحيب).
+  UserGender? get gender => _profile?.gender;
+
   /// الاسم المعروض، أو البريد الإلكتروني إن لم يُحدَّد اسم.
   String? get displayName {
     final name = _profile?.displayName;
@@ -82,8 +86,14 @@ class SessionService extends ChangeNotifier {
     return _user?.email;
   }
 
+  /// هل المستخدم الحالي مشرف محتوى.
+  bool get isAdmin => _profile?.role == UserRole.admin;
+
   /// هل المستخدم الحالي مشرف عام (له صلاحية الوصول إلى لوحة التحكم).
   bool get isSuperAdmin => _profile?.role == UserRole.superAdmin;
+
+  /// هل المستخدم مشرف من أي نوع (مشرف محتوى أو مشرف عام).
+  bool get isAnyAdmin => isAdmin || isSuperAdmin;
 
   /// حالة تحميل عمليات تسجيل الدخول/إنشاء الحساب.
   bool get isLoading => _isLoading;

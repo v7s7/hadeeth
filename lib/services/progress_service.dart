@@ -22,13 +22,16 @@ class ProgressService extends ChangeNotifier {
   }
 
   // قيم نظام النقاط من المواصفات.
-  static const int dailyXpCap = 40;
+  static const int baseDailyXpCap = 40;
   static const int xpReadHadith = 5;
   static const int xpMarkLearned = 5;
   static const int xpCompleteQuiz = 10;
   static const int xpPerfectQuizBonus = 5;
   static const int xpReviewHadith = 3;
   static const int xpDailyStreak = 5;
+
+  /// تكلفة شراء تجميد السلسلة بالنقاط.
+  static const int streakFreezeXpCost = 50;
 
   final LocalStorageService _storage;
   UserProgress _progress = UserProgress.initial();
@@ -43,13 +46,53 @@ class ProgressService extends ChangeNotifier {
   AppLevel? get nextLevel => nextLevelForXp(_progress.totalXp);
   double get levelProgressValue => levelProgress(_progress.totalXp);
 
+  /// رصيد تجميد السلسلة الحالي.
+  int get streakFreezeCount => _progress.streakFreezeCount;
+
+  // ────────────────────────── Streak Multiplier ──────────────────────────
+
+  /// مضاعف XP بناءً على طول السلسلة الحالية:
+  ///   0–2 أيام: ×1.0  (بدون مكافأة)
+  ///   3–6 أيام: ×1.2  (+20%)
+  ///  7–13 أيام: ×1.5  (+50%) 🔥
+  /// 14–29 أيام: ×1.75 (+75%) 🔥🔥
+  /// 30+ يومًا : ×2.0  (مضاعفة!) 🔥🔥🔥
+  double get streakMultiplier {
+    final s = _progress.currentStreak;
+    if (s >= 30) return 2.0;
+    if (s >= 14) return 1.75;
+    if (s >= 7)  return 1.5;
+    if (s >= 3)  return 1.2;
+    return 1.0;
+  }
+
+  /// نص المضاعف للعرض: "×1.5" أو "" إذا لم تكن هناك مكافأة.
+  String get streakMultiplierLabel {
+    final m = streakMultiplier;
+    if (m == 1.0) return '';
+    final s = m == m.roundToDouble() ? m.toInt().toString() : m.toString();
+    return '×$s';
+  }
+
+  /// الحد الأقصى لـ XP اليومي — يرتفع مع السلسلة:
+  ///   0-6   أيام: 40 XP
+  ///   7-13  أيام: 55 XP
+  ///   14-29 أيام: 70 XP
+  ///   30+   أيام: 90 XP
+  int get _effectiveDailyXpCap {
+    final s = _progress.currentStreak;
+    if (s >= 30) return 90;
+    if (s >= 14) return 70;
+    if (s >= 7)  return 55;
+    return baseDailyXpCap;
+  }
+
   // ────────────────────────── Auth listener ──────────────────────────
 
   void _listenToAuth() {
     try {
       _authSub = FirebaseAuth.instance.authStateChanges().listen((user) async {
         if (user == null) {
-          // تسجيل خروج: أعد تحميل البيانات المحلية.
           if (_currentUid != null) {
             _currentUid = null;
             _progress = await _storage.loadProgress();
@@ -57,7 +100,6 @@ class ProgressService extends ChangeNotifier {
             notifyListeners();
           }
         } else if (user.uid != _currentUid) {
-          // تسجيل دخول بحساب جديد: ادمج المحلي مع السحابة.
           _currentUid = user.uid;
           await _mergeWithCloud(user.uid);
         }
@@ -67,7 +109,6 @@ class ProgressService extends ChangeNotifier {
     }
   }
 
-  /// يحمّل بيانات التقدّم عند أول تشغيل.
   Future<void> load() async {
     _progress = await _storage.loadProgress();
     _isLoaded = true;
@@ -76,7 +117,6 @@ class ProgressService extends ChangeNotifier {
 
   // ────────────────────────── Firestore sync ──────────────────────────
 
-  /// يدمج التقدّم المحلي مع ما في Firestore ويحفظ النتيجة في كليهما.
   Future<void> _mergeWithCloud(String uid) async {
     try {
       final doc = await FirebaseFirestore.instance
@@ -109,6 +149,16 @@ class ProgressService extends ChangeNotifier {
 
   bool isRead(String hadithId) => _progress.readHadithIds.contains(hadithId);
 
+  /// عدد الأحاديث المقروءة اليوم.
+  int get dailyHadithReadCount {
+    final today = _dateKey(DateTime.now());
+    // نعدّها من dailyActivityXp — إن كان فيه نشاط اليوم فالمستخدم قرأ شيئًا.
+    // للحصول على العدد الدقيق نحتاج تتبّعًا مستقلاً؛ نُقدّره بقيم XP اليوم.
+    // القيمة 5 XP = حديث واحد (xpReadHadith).
+    final todayXp = _progress.dailyActivityXp[today] ?? 0;
+    return (todayXp / xpReadHadith).floor().clamp(0, 99);
+  }
+
   Future<void> toggleFavorite(String hadithId) async {
     final saved = Set<String>.from(_progress.savedHadithIds);
     if (!saved.remove(hadithId)) {
@@ -118,8 +168,6 @@ class ProgressService extends ChangeNotifier {
     await _persist();
   }
 
-  /// تسجيل قراءة حديث. يمنح نقاطًا فقط في أول قراءة، ويحسب يوم السلسلة
-  /// إذا كان هذا الحديث هو "حديث اليوم".
   Future<int> recordHadithRead(String hadithId,
       {bool isHadithOfTheDay = false}) async {
     var xpGained = 0;
@@ -138,7 +186,6 @@ class ProgressService extends ChangeNotifier {
     return xpGained;
   }
 
-  /// وضع علامة "تعلمت هذا الحديث". يمنح نقاطًا مرة واحدة فقط لكل حديث.
   Future<int> markHadithLearned(String hadithId) async {
     if (_progress.learnedHadithIds.contains(hadithId)) return 0;
 
@@ -153,14 +200,12 @@ class ProgressService extends ChangeNotifier {
     return xpGained;
   }
 
-  /// مراجعة حديث تم تعلمه سابقًا.
   Future<int> reviewHadith(String hadithId) async {
     final xpGained = _addXp(xpReviewHadith);
     await _persist();
     return xpGained;
   }
 
-  /// إكمال اختبار حديث، مع منح مكافأة إضافية للنتيجة الكاملة.
   Future<int> completeQuiz({required int correct, required int total}) async {
     var xpGained = _addXp(xpCompleteQuiz);
     if (total > 0 && correct == total) {
@@ -179,7 +224,23 @@ class ProgressService extends ChangeNotifier {
     return xpGained;
   }
 
-  /// نقاط الخبرة المكتسبة في كل يوم من آخر 7 أيام (الأقدم أولاً).
+  // ────────────────────────── Streak Freeze ──────────────────────────
+
+  /// يشتري تجميد سلسلة واحد مقابل [streakFreezeXpCost] نقطة.
+  /// يُعيد true إذا نجحت العملية، false إذا كانت النقاط غير كافية.
+  Future<bool> buyStreakFreeze() async {
+    if (_progress.totalXp < streakFreezeXpCost) return false;
+
+    _progress = _progress.copyWith(
+      totalXp: _progress.totalXp - streakFreezeXpCost,
+      streakFreezeCount: _progress.streakFreezeCount + 1,
+    );
+    await _persist();
+    return true;
+  }
+
+  // ────────────────────────── Stats helpers ──────────────────────────
+
   List<int> last7DaysXp() {
     final now = DateTime.now();
     return List.generate(7, (i) {
@@ -212,6 +273,9 @@ class ProgressService extends ChangeNotifier {
   int _addXp(int amount) {
     if (amount <= 0) return 0;
 
+    // طبّق مضاعف السلسلة على المبلغ الأصلي.
+    final boosted = (amount * streakMultiplier).round();
+
     final now = DateTime.now();
     final todayKey = _dateKey(now);
     final lastXpKey =
@@ -222,13 +286,14 @@ class ProgressService extends ChangeNotifier {
       dailyEarned = 0;
     }
 
-    final remainingCap = dailyXpCap - dailyEarned;
+    final cap = _effectiveDailyXpCap;
+    final remainingCap = cap - dailyEarned;
     if (remainingCap <= 0) {
       _progress = _progress.copyWith(dailyXpEarned: dailyEarned, lastXpDate: now);
       return 0;
     }
 
-    final granted = amount < remainingCap ? amount : remainingCap;
+    final granted = boosted < remainingCap ? boosted : remainingCap;
 
     final activity = Map<String, int>.from(_progress.dailyActivityXp);
     activity[todayKey] = (activity[todayKey] ?? 0) + granted;
@@ -250,12 +315,30 @@ class ProgressService extends ChangeNotifier {
         ? null
         : _dateKey(_progress.lastActivityDate!);
 
+    // نشاط اليوم مسجّل بالفعل — لا داعي لتكراره.
     if (lastKey == todayKey) return 0;
 
     int newStreak;
     if (lastKey != null) {
       final yesterdayKey = _dateKey(now.subtract(const Duration(days: 1)));
-      newStreak = lastKey == yesterdayKey ? _progress.currentStreak + 1 : 1;
+
+      if (lastKey == yesterdayKey) {
+        // المستخدم نشط أمس — السلسلة تستمر.
+        newStreak = _progress.currentStreak + 1;
+      } else {
+        // المستخدم فاتته يوم على الأقل — هل يملك تجميد سلسلة؟
+        final twoDaysAgoKey = _dateKey(now.subtract(const Duration(days: 2)));
+        if (lastKey == twoDaysAgoKey && _progress.streakFreezeCount > 0) {
+          // تجميد يُنقذ السلسلة من انقطاع يوم واحد فقط.
+          _progress = _progress.copyWith(
+            streakFreezeCount: _progress.streakFreezeCount - 1,
+          );
+          newStreak = _progress.currentStreak + 1;
+        } else {
+          // السلسلة تنكسر.
+          newStreak = 1;
+        }
+      }
     } else {
       newStreak = 1;
     }

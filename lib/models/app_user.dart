@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'user_gender.dart';
 import 'user_role.dart';
 
 /// ملف المستخدم المخزَّن في Firestore (users/{uid})، يحدد دوره وحالة حسابه.
@@ -11,6 +12,9 @@ class AppUser {
   final bool isDisabled;
   final DateTime createdAt;
 
+  /// جنس المستخدم لتخصيص الشخصية والنصوص العربية.
+  final UserGender? gender;
+
   const AppUser({
     required this.id,
     required this.email,
@@ -18,12 +22,14 @@ class AppUser {
     required this.role,
     required this.isDisabled,
     required this.createdAt,
+    this.gender,
   });
 
   AppUser copyWith({
     String? displayName,
     UserRole? role,
     bool? isDisabled,
+    UserGender? gender,
   }) {
     return AppUser(
       id: id,
@@ -32,6 +38,7 @@ class AppUser {
       role: role ?? this.role,
       isDisabled: isDisabled ?? this.isDisabled,
       createdAt: createdAt,
+      gender: gender ?? this.gender,
     );
   }
 
@@ -42,6 +49,7 @@ class AppUser {
       'role': role.name,
       'isDisabled': isDisabled,
       'createdAt': Timestamp.fromDate(createdAt),
+      if (gender != null) 'gender': gender!.name,
     };
   }
 
@@ -53,7 +61,11 @@ class AppUser {
       displayName: map['displayName'] as String? ?? '',
       role: UserRole.fromName(map['role'] as String?),
       isDisabled: map['isDisabled'] as bool? ?? false,
-      createdAt: createdAtValue is Timestamp ? createdAtValue.toDate() : DateTime.now(),
+      createdAt:
+          createdAtValue is Timestamp ? createdAtValue.toDate() : DateTime.now(),
+      gender: map.containsKey('gender')
+          ? UserGender.fromString(map['gender'] as String?)
+          : null,
     );
   }
 }

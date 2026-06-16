@@ -73,7 +73,7 @@ class AdminCategoriesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final categories = context.watch<CategoryRepository>().categories;
 
-    return AdminGuard(
+    return SuperAdminGuard(
       child: Scaffold(
         appBar: AppBar(title: const Text('إدارة التصنيفات')),
         floatingActionButton: FloatingActionButton(

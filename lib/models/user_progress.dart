@@ -16,6 +16,9 @@ class UserProgress {
   /// نشاط آخر 7 أيام: مفتاحه تاريخ بصيغة yyyy-MM-dd وقيمته نقاط الخبرة المكتسبة في ذلك اليوم.
   final Map<String, int> dailyActivityXp;
 
+  /// عدد رصيد تجميد السلسلة (يُشترى بـ 50 XP، يُستهلك أوتوماتيكيًا حين يُفوّت المستخدم يومًا).
+  final int streakFreezeCount;
+
   const UserProgress({
     required this.totalXp,
     required this.currentStreak,
@@ -30,6 +33,7 @@ class UserProgress {
     required this.dailyXpEarned,
     required this.lastXpDate,
     required this.dailyActivityXp,
+    this.streakFreezeCount = 0,
   });
 
   factory UserProgress.initial() => UserProgress(
@@ -46,6 +50,7 @@ class UserProgress {
         dailyXpEarned: 0,
         lastXpDate: null,
         dailyActivityXp: <String, int>{},
+        streakFreezeCount: 0,
       );
 
   double get quizAccuracy =>
@@ -65,6 +70,7 @@ class UserProgress {
     int? dailyXpEarned,
     DateTime? lastXpDate,
     Map<String, int>? dailyActivityXp,
+    int? streakFreezeCount,
   }) {
     return UserProgress(
       totalXp: totalXp ?? this.totalXp,
@@ -80,6 +86,7 @@ class UserProgress {
       dailyXpEarned: dailyXpEarned ?? this.dailyXpEarned,
       lastXpDate: lastXpDate ?? this.lastXpDate,
       dailyActivityXp: dailyActivityXp ?? this.dailyActivityXp,
+      streakFreezeCount: streakFreezeCount ?? this.streakFreezeCount,
     );
   }
 
@@ -117,6 +124,10 @@ class UserProgress {
         ...other.dailyActivityXp,
         ...dailyActivityXp, // يُقدَّم الجهاز الحالي في حالة تداخل التواريخ.
       },
+      // نأخذ أكبر رصيد تجميد من الجهازين.
+      streakFreezeCount: streakFreezeCount > other.streakFreezeCount
+          ? streakFreezeCount
+          : other.streakFreezeCount,
     );
   }
 
@@ -134,6 +145,7 @@ class UserProgress {
         'dailyXpEarned': dailyXpEarned,
         'lastXpDate': lastXpDate?.toIso8601String(),
         'dailyActivityXp': dailyActivityXp,
+        'streakFreezeCount': streakFreezeCount,
       };
 
   factory UserProgress.fromJson(Map<String, dynamic> json) => UserProgress(
@@ -162,5 +174,6 @@ class UserProgress {
         dailyActivityXp: ((json['dailyActivityXp'] as Map?) ?? const {}).map(
           (key, value) => MapEntry(key as String, value as int),
         ),
+        streakFreezeCount: json['streakFreezeCount'] as int? ?? 0,
       );
 }

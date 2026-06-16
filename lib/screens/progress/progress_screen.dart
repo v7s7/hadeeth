@@ -121,7 +121,7 @@ class _WeeklyActivityChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     const maxBarHeight = 100.0;
-    const maxValue = ProgressService.dailyXpCap;
+    const maxValue = ProgressService.baseDailyXpCap;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,

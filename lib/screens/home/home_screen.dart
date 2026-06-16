@@ -5,18 +5,24 @@ import 'package:provider/provider.dart';
 import '../../models/hadith.dart';
 import '../../services/category_repository.dart';
 import '../../services/hadith_repository.dart';
+import '../../services/local_storage_service.dart';
 import '../../services/progress_service.dart';
 import '../../services/session_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../../models/app_level.dart';
+import '../../models/app_characters.dart';
+import '../../models/user_gender.dart';
 import '../../widgets/abandoned_badge.dart';
+import '../../widgets/daily_goal_card.dart';
 import '../../widgets/guest_banner.dart';
 import '../../widgets/hadith_card.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/streak_badge.dart';
 import '../../widgets/xp_progress_bar.dart';
 
-/// الشاشة الرئيسية: حديث اليوم، السلسلة، المستوى، وأقسام الأحاديث.
+/// الشاشة الرئيسية: الشخصية الترحيبية، السلسلة، الهدف اليومي،
+/// حديث اليوم، والأقسام المختلفة.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -27,16 +33,55 @@ class HomeScreen extends StatelessWidget {
     final progress = progressService.progress;
 
     final repository = context.watch<HadithRepository>();
+
+    // ── شاشة تحميل — حتى يصل أول رد من Firestore ──
+    if (!repository.isLoaded) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('الحديث المهجور')),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     final hadithOfDay = repository.hadithOfTheDay();
     final abandoned = repository.abandoned().take(5).toList();
     final recent = repository.recentlyAdded(limit: 5);
+
+    // ── شاشة "لا محتوى بعد" إذا لم ينشر المشرف أي أحاديث ──
+    if (hadithOfDay == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('الحديث المهجور')),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.menu_book_outlined,
+                  size: 72, color: AppColors.primary.withOpacity(0.4)),
+              const SizedBox(height: 20),
+              Text(
+                'قريبًا...',
+                style: AppTextStyles.screenTitle
+                    .copyWith(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'يعمل فريقنا على إضافة الأحاديث\nتابعنا قريبًا',
+                style: AppTextStyles.body
+                    .copyWith(color: AppColors.textMuted),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('الحديث المهجور')),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // على الشاشات العريضة: اجعل المحتوى بحد أقصى 900px في المنتصف.
             final side = constraints.maxWidth > 900
                 ? (constraints.maxWidth - 900) / 2
                 : 0.0;
@@ -47,10 +92,23 @@ class HomeScreen extends StatelessWidget {
                   const GuestBanner(),
                   const SizedBox(height: 16),
                 ],
+
+                // ── شخصية الترحيب ──
+                _CharacterGreetingCard(
+                  session: session,
+                  appLevel: progressService.currentLevel,
+                ),
+                const SizedBox(height: 16),
+
+                // ── شريط السلسلة والـ XP ──
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    StreakBadge(streak: progress.currentStreak),
+                    StreakBadge(
+                      streak: progress.currentStreak,
+                      multiplierLabel:
+                          progressService.streakMultiplierLabel,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: XpProgressBar(
@@ -62,55 +120,71 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
+
+                // ── بطاقة الهدف اليومي ──
+                DailyGoalCard(progressService: progressService),
                 const SizedBox(height: 20),
+
+                // ── حديث اليوم ──
                 _HadithOfDayCard(hadith: hadithOfDay),
                 const SizedBox(height: 20),
                 Row(
                   children: [
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () => context.push('/hadith/${hadithOfDay.id}'),
+                        onPressed: () =>
+                            context.push('/hadith/${hadithOfDay.id}'),
                         child: const Text('ابدأ التعلم'),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () => context.push('/quiz/${hadithOfDay.id}'),
+                        onPressed: () =>
+                            context.push('/quiz/${hadithOfDay.id}'),
                         child: const Text('اختبر نفسك'),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 28),
-                SectionHeader(
-                  title: 'أحاديث مهجورة',
-                  onSeeAll: () => context.push('/category/abandoned_sunnah'),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 188,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: abandoned.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemBuilder: (context, index) =>
-                        HadithCard(hadith: abandoned[index], width: 230),
+
+                if (abandoned.isNotEmpty) ...[
+                  const SizedBox(height: 28),
+                  SectionHeader(
+                    title: 'أحاديث مهجورة',
+                    onSeeAll: () =>
+                        context.push('/category/abandoned_sunnah'),
                   ),
-                ),
-                const SizedBox(height: 28),
-                const SectionHeader(title: 'آخر ما أضيف'),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 188,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: recent.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemBuilder: (context, index) =>
-                        HadithCard(hadith: recent[index], width: 230),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 188,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: abandoned.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) =>
+                          HadithCard(hadith: abandoned[index], width: 230),
+                    ),
                   ),
-                ),
+                ],
+
+                if (recent.isNotEmpty) ...[
+                  const SizedBox(height: 28),
+                  const SectionHeader(title: 'آخر ما أضيف'),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 188,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: recent.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) =>
+                          HadithCard(hadith: recent[index], width: 230),
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 16),
               ],
             );
@@ -121,7 +195,136 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-/// بطاقة "حديث اليوم" البارزة في أعلى الشاشة الرئيسية.
+// ── بطاقة الشخصية الترحيبية ─────────────────────────────────────────────────
+
+class _CharacterGreetingCard extends StatefulWidget {
+  final SessionService session;
+  final AppLevel appLevel;
+
+  const _CharacterGreetingCard({
+    required this.session,
+    required this.appLevel,
+  });
+
+  @override
+  State<_CharacterGreetingCard> createState() => _CharacterGreetingCardState();
+}
+
+class _CharacterGreetingCardState extends State<_CharacterGreetingCard> {
+  UserGender? _gender;
+  CharacterOption? _character;
+
+  @override
+  void initState() {
+    super.initState();
+    final instant = widget.session.gender ?? LocalStorageService.cachedGender;
+    if (instant != null) {
+      _gender = instant;
+    }
+    _loadData();
+  }
+
+  @override
+  void didUpdateWidget(_CharacterGreetingCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.session.gender != oldWidget.session.gender &&
+        widget.session.gender != null) {
+      setState(() => _gender = widget.session.gender);
+    }
+  }
+
+  Future<void> _loadData() async {
+    final storage = LocalStorageService();
+    final gender = widget.session.gender ?? await storage.loadGender();
+    final id = LocalStorageService.cachedCharacterId ?? await storage.loadCharacterId();
+    final char = AppCharacters.findById(id) ??
+        (gender != null ? AppCharacters.defaultFor(gender) : null);
+    if (mounted) setState(() { _gender = gender; _character = char; });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final gender = _gender;
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOut,
+      child: AnimatedOpacity(
+        opacity: gender != null ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOut,
+        child: gender != null ? _buildCard(gender) : const SizedBox.shrink(),
+      ),
+    );
+  }
+
+  Widget _buildCard(UserGender gender) {
+    final primary = Color(gender.primaryColorValue);
+    final secondary = Color(gender.secondaryColorValue);
+    final glow = Color(gender.glowColorValue);
+
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12
+        ? 'صباح الخير'
+        : hour < 18
+            ? 'مساء الخير'
+            : 'مساء النور';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: primary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: secondary.withOpacity(0.2), width: 1),
+      ),
+      child: Row(
+        children: [
+          if (_character != null)
+            Image.asset(
+              _character!.assetPath,
+              height: 64,
+              width: 52,
+              fit: BoxFit.contain,
+            )
+          else
+            const SizedBox(width: 52, height: 64),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '$greeting، ${gender.welcomeText.split('،').last.trim()}',
+                  style: TextStyle(
+                    color: secondary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textDirection: TextDirection.rtl,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'المستوى ${widget.appLevel.level} • ${widget.appLevel.titleAr}',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.45),
+                    fontSize: 12,
+                  ),
+                  textDirection: TextDirection.rtl,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Icon(Icons.chevron_left_rounded,
+              color: glow.withOpacity(0.5), size: 20),
+        ],
+      ),
+    );
+  }
+}
+
+// ── بطاقة حديث اليوم ────────────────────────────────────────────────────────
+
 class _HadithOfDayCard extends StatelessWidget {
   final Hadith hadith;
 
@@ -129,7 +332,8 @@ class _HadithOfDayCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final category = context.watch<CategoryRepository>().categoryById(hadith.categoryId);
+    final category =
+        context.watch<CategoryRepository>().categoryById(hadith.categoryId);
 
     return Card(
       color: AppColors.primary,
@@ -152,7 +356,8 @@ class _HadithOfDayCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     'حديث اليوم',
-                    style: AppTextStyles.sectionTitle.copyWith(color: Colors.white),
+                    style:
+                        AppTextStyles.sectionTitle.copyWith(color: Colors.white),
                   ),
                   const Spacer(),
                   if (hadith.isAbandonedSunnah) const AbandonedBadge(),
@@ -176,7 +381,8 @@ class _HadithOfDayCard extends StatelessWidget {
               if (category != null) ...[
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(20),
