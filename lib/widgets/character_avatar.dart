@@ -161,7 +161,7 @@ class _CharacterAvatarPainter extends CustomPainter {
       _ellipse(canvas, const Offset(256, 150), 43, 52, const Color(0xFFE2B188));
     }
     if (decorated) {
-      for (final y in [250.0, 284, 318, 352, 386]) {
+      for (final y in [250.0, 284.0, 318.0, 352.0, 386.0]) {
         _line(canvas, Offset(202, y), Offset(310, y + 10), 3,
             const Color(0xBED6AA4A));
         _ellipse(canvas, Offset(226, y + 4), 5, 5, const Color(0xDD70AE98));
