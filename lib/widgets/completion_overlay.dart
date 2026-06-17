@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../data/levels_data.dart';
 import '../models/app_characters.dart';
+import 'character_avatar.dart';
 import '../models/app_level.dart';
 
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -316,8 +317,7 @@ class _CompletionOverlayState extends State<_CompletionOverlay>
                 ),
               ),
               if (widget.character != null)
-                Image.asset(widget.character!.assetPath,
-                    height: 140, fit: BoxFit.contain)
+                CharacterAvatar(character: widget.character!, height: 140)
               else
                 const SizedBox(height: 140, width: 100),
             ],

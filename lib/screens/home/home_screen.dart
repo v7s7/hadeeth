@@ -10,9 +10,11 @@ import '../../services/progress_service.dart';
 import '../../services/session_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../../models/app_accessory.dart';
 import '../../models/app_level.dart';
 import '../../models/app_characters.dart';
 import '../../models/user_gender.dart';
+import '../../models/user_progress.dart';
 import '../../widgets/abandoned_badge.dart';
 import '../../widgets/daily_goal_card.dart';
 import '../../widgets/guest_banner.dart';
@@ -20,6 +22,7 @@ import '../../widgets/hadith_card.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/streak_badge.dart';
 import '../../widgets/xp_progress_bar.dart';
+import '../../widgets/character_avatar.dart';
 
 /// الشاشة الرئيسية: الشخصية الترحيبية، السلسلة، الهدف اليومي،
 /// حديث اليوم، والأقسام المختلفة.
@@ -97,6 +100,7 @@ class HomeScreen extends StatelessWidget {
                 _CharacterGreetingCard(
                   session: session,
                   appLevel: progressService.currentLevel,
+                  progress: progress,
                 ),
                 const SizedBox(height: 16),
 
@@ -200,10 +204,12 @@ class HomeScreen extends StatelessWidget {
 class _CharacterGreetingCard extends StatefulWidget {
   final SessionService session;
   final AppLevel appLevel;
+  final UserProgress progress;
 
   const _CharacterGreetingCard({
     required this.session,
     required this.appLevel,
+    required this.progress,
   });
 
   @override
@@ -213,6 +219,8 @@ class _CharacterGreetingCard extends StatefulWidget {
 class _CharacterGreetingCardState extends State<_CharacterGreetingCard> {
   UserGender? _gender;
   CharacterOption? _character;
+  AppAccessory? _accessory;
+  String? _preferredName;
 
   @override
   void initState() {
@@ -221,25 +229,55 @@ class _CharacterGreetingCardState extends State<_CharacterGreetingCard> {
     if (instant != null) {
       _gender = instant;
     }
+    _preferredName = widget.session.displayName ??
+        LocalStorageService.cachedPreferredName;
     _loadData();
   }
 
   @override
   void didUpdateWidget(_CharacterGreetingCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.session.gender != oldWidget.session.gender &&
-        widget.session.gender != null) {
-      setState(() => _gender = widget.session.gender);
+    if (widget.session.gender != oldWidget.session.gender ||
+        widget.session.characterId != oldWidget.session.characterId ||
+        widget.session.activeAccessoryId != oldWidget.session.activeAccessoryId ||
+        widget.session.displayName != oldWidget.session.displayName) {
+      setState(() {
+        if (widget.session.gender != null) _gender = widget.session.gender;
+        _character = AppCharacters.findById(widget.session.characterId) ??
+            _character;
+        _accessory = AppAccessories.findById(
+              widget.session.activeAccessoryId,
+            ) ??
+            _accessory;
+        _preferredName = widget.session.displayName ?? _preferredName;
+      });
     }
   }
 
   Future<void> _loadData() async {
     final storage = LocalStorageService();
     final gender = widget.session.gender ?? await storage.loadGender();
-    final id = LocalStorageService.cachedCharacterId ?? await storage.loadCharacterId();
+    final id = widget.session.characterId ??
+        LocalStorageService.cachedCharacterId ??
+        await storage.loadCharacterId();
+    final accessoryId = widget.session.activeAccessoryId ??
+        LocalStorageService.cachedActiveAccessoryId ??
+        await storage.loadActiveAccessoryId();
+    final name = widget.session.displayName ??
+        LocalStorageService.cachedPreferredName ??
+        await storage.loadPreferredName();
     final char = AppCharacters.findById(id) ??
         (gender != null ? AppCharacters.defaultFor(gender) : null);
-    if (mounted) setState(() { _gender = gender; _character = char; });
+    final accessory = AppAccessories.findById(accessoryId) ??
+        AppAccessories.defaultAccessory();
+    if (mounted) {
+      setState(() {
+        _gender = gender;
+        _character = char;
+        _accessory = accessory;
+        _preferredName = name;
+      });
+    }
   }
 
   @override
@@ -258,6 +296,17 @@ class _CharacterGreetingCardState extends State<_CharacterGreetingCard> {
     );
   }
 
+
+  String _characterTalk(UserProgress progress, String characterName) {
+    if (progress.currentStreak >= 7) {
+      return 'أنا $characterName، سلسلتك ${progress.currentStreak} أيام — واصل!';
+    }
+    if (progress.dailyXpEarned > 0) {
+      return 'أنا $characterName، بداية موفقة اليوم ✨';
+    }
+    return 'أنا $characterName، جاهز أرافقك اليوم؟';
+  }
+
   Widget _buildCard(UserGender gender) {
     final primary = Color(gender.primaryColorValue);
     final secondary = Color(gender.secondaryColorValue);
@@ -270,9 +319,21 @@ class _CharacterGreetingCardState extends State<_CharacterGreetingCard> {
             ? 'مساء الخير'
             : 'مساء النور';
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
+    final name = (_preferredName != null && _preferredName!.trim().isNotEmpty)
+        ? _preferredName!.trim()
+        : gender.welcomeText.split('،').last.trim();
+    final talk = _character == null
+        ? 'اختر شخصية ترافقك في رحلتك اليومية'
+        : _characterTalk(widget.progress, _character!.labelAr);
+    final characterLabel = _character?.labelAr ?? 'الشخصية';
+    final accessory = _accessory ?? AppAccessories.defaultAccessory();
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () => context.push('/welcome'),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
         color: primary.withOpacity(0.08),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: secondary.withOpacity(0.2), width: 1),
@@ -280,21 +341,35 @@ class _CharacterGreetingCardState extends State<_CharacterGreetingCard> {
       child: Row(
         children: [
           if (_character != null)
-            Image.asset(
-              _character!.assetPath,
-              height: 64,
-              width: 52,
-              fit: BoxFit.contain,
+            Semantics(
+              label: 'الشخصية المختارة: $characterLabel',
+              image: true,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.96, end: 1),
+                duration: const Duration(milliseconds: 700),
+                curve: Curves.easeOutBack,
+                builder: (context, scale, child) => Transform.scale(
+                  scale: scale,
+                  child: child,
+                ),
+                child: CharacterAvatar(
+                  character: _character!,
+                  height: 64,
+                  width: 52,
+                ),
+              ),
             )
           else
             const SizedBox(width: 52, height: 64),
-          const SizedBox(width: 14),
+          const SizedBox(width: 8),
+          _AccessoryPill(accessory: accessory),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '$greeting، ${gender.welcomeText.split('،').last.trim()}',
+                  '$greeting، $name',
                   style: TextStyle(
                     color: secondary,
                     fontSize: 15,
@@ -304,7 +379,7 @@ class _CharacterGreetingCardState extends State<_CharacterGreetingCard> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'المستوى ${widget.appLevel.level} • ${widget.appLevel.titleAr}',
+                  '$talk\nالمستوى ${widget.appLevel.level} • ${widget.appLevel.titleAr}',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.45),
                     fontSize: 12,
@@ -315,9 +390,60 @@ class _CharacterGreetingCardState extends State<_CharacterGreetingCard> {
             ),
           ),
           const SizedBox(width: 8),
-          Icon(Icons.chevron_left_rounded,
-              color: glow.withOpacity(0.5), size: 20),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.chevron_left_rounded,
+                  color: glow.withOpacity(0.5), size: 20),
+              const SizedBox(height: 4),
+              Text(
+                'تغيير',
+                style: AppTextStyles.caption.copyWith(
+                  color: secondary.withOpacity(0.85),
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
         ],
+      ),
+      ),
+    );
+  }
+}
+
+class _AccessoryPill extends StatelessWidget {
+  final AppAccessory accessory;
+
+  const _AccessoryPill({required this.accessory});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'رفيق الشخصية: ${accessory.nameAr}',
+      child: Container(
+        width: 42,
+        height: 58,
+        decoration: BoxDecoration(
+          color: accessory.color.withOpacity(0.16),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: accessory.color.withOpacity(0.35)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(accessory.emoji, style: const TextStyle(fontSize: 20)),
+            const SizedBox(height: 3),
+            Container(
+              width: 18,
+              height: 3,
+              decoration: BoxDecoration(
+                color: accessory.color.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

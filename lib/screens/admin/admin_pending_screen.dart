@@ -7,7 +7,6 @@ import '../../models/enums.dart';
 import '../../models/hadith.dart';
 import '../../models/hadith_category.dart';
 import '../../services/category_repository.dart';
-import '../../services/hadith_repository.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/empty_state.dart';
@@ -118,11 +117,12 @@ class _PendingHadithCardState extends State<_PendingHadithCard> {
   bool _expanded = false;
 
   Future<void> _approve(BuildContext context) async {
-    final hadithRepo = context.read<HadithRepository>();
-
+    final now = DateTime.now();
     final hadith = Hadith.fromMap(widget.docId, {
       ...widget.data,
       'status': ContentStatus.published.name,
+      'updatedAt': now,
+      'publishedAt': now,
     });
 
     try {

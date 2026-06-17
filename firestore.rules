@@ -21,6 +21,21 @@ service cloud.firestore {
       return isAdmin() || isSuperAdmin();
     }
 
+    function isManageableUserRole() {
+      return request.resource.data.role in ['user', 'admin'];
+    }
+
+    function keepsProtectedUserFields() {
+      return request.resource.data.role == resource.data.role
+        && request.resource.data.isDisabled == resource.data.isDisabled;
+    }
+
+    function isSuperAdminUserManagementUpdate(userId) {
+      return isSuperAdmin()
+        && request.auth.uid != userId
+        && isManageableUserRole();
+    }
+
     // الأحاديث المنشورة: قراءة عامة، كتابة للمشرف العام فقط.
     match /hadiths/{hadithId} {
       allow read: if true;
@@ -60,10 +75,9 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.auth.uid == userId
         && request.resource.data.role == 'user';
 
-      allow update: if isSuperAdmin() ||
+      allow update: if isSuperAdminUserManagementUpdate(userId) ||
         (isSignedIn() && request.auth.uid == userId
-          && request.resource.data.role == resource.data.role
-          && request.resource.data.isDisabled == resource.data.isDisabled);
+          && keepsProtectedUserFields());
 
       allow delete: if isSuperAdmin();
 

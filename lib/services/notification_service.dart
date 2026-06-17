@@ -3,6 +3,23 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+enum NotificationTone {
+  gentle('هادئ'),
+  motivational('تحفيزي'),
+  short('مختصر');
+
+  const NotificationTone(this.labelAr);
+
+  final String labelAr;
+
+  static NotificationTone fromName(String? name) {
+    return values.firstWhere(
+      (tone) => tone.name == name,
+      orElse: () => NotificationTone.gentle,
+    );
+  }
+}
+
 /// يتيح جدولة تذكير يومي بحديث اليوم عبر إشعارات محلية.
 ///
 /// استخدام:
@@ -22,23 +39,38 @@ class NotificationService {
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
-  /// رسائل إشعار متنوعة — يتم اختيار واحدة كل يوم دوريًا.
-  static const List<String> _notifBodies = [
-    'حان وقت قراءة حديث اليوم 📖',
-    'سنّة منسية بانتظارك — دقيقتان تُحيي سنة ✨',
-    'مَن بلّغ حديثًا واحدًا عنه ﷺ فله أجر عظيم 🌟',
-    'استمر في سلسلتك اليومية ولا تنقطع عن العلم 🔥',
-    'حديث جديد ينتظرك اليوم — تعلّم وبلّغ 📚',
-    'العلم بالتعلّم — ابدأ حديث اليوم الآن 💡',
-    'دقيقة مع النبي ﷺ تُنير يومك كلّه ☀️',
-  ];
+  /// رسائل إشعار متنوعة — يتم اختيار واحدة كل يوم دوريًا بحسب النغمة.
+  static const Map<NotificationTone, List<String>> _notifBodies = {
+    NotificationTone.gentle: [
+      'حان وقت قراءة حديث اليوم 📖',
+      'دقيقة هادئة مع حديث اليوم تُنير قلبك ☀️',
+      'حديث قصير ينتظرك عندما يناسبك الوقت 🌿',
+    ],
+    NotificationTone.motivational: [
+      'سنّة منسية بانتظارك — دقيقتان تُحيي سنة ✨',
+      'استمر في سلسلتك اليومية ولا تنقطع عن العلم 🔥',
+      'حديث جديد ينتظرك اليوم — تعلّم وبلّغ 📚',
+    ],
+    NotificationTone.short: [
+      'حديث اليوم 📖',
+      'لا تنس وردك اليومي ✨',
+      'دقيقة للسنّة 🌿',
+    ],
+  };
 
   /// يختار رسالة بناءً على يوم السنة (يتغير كل يوم دوريًا).
-  static String _getTodaysBody() {
+  static String buildDailyReminderBody({
+    String? userName,
+    NotificationTone tone = NotificationTone.gentle,
+  }) {
     final dayOfYear = DateTime.now()
         .difference(DateTime(DateTime.now().year, 1, 1))
         .inDays;
-    return _notifBodies[dayOfYear % _notifBodies.length];
+    final bodies = _notifBodies[tone] ?? _notifBodies[NotificationTone.gentle]!;
+    final body = bodies[dayOfYear % bodies.length];
+    final name = userName?.trim();
+    if (name == null || name.isEmpty) return body;
+    return '$name، $body';
   }
 
   /// يُهيَّأ مرة واحدة في [main] قبل تشغيل التطبيق.
@@ -84,7 +116,11 @@ class NotificationService {
   }
 
   /// يجدول إشعارًا يوميًا يتكرر في [time] كل يوم مع رسالة متنوعة.
-  static Future<void> scheduleDailyReminder(TimeOfDay time) async {
+  static Future<void> scheduleDailyReminder(
+    TimeOfDay time, {
+    String? userName,
+    NotificationTone tone = NotificationTone.gentle,
+  }) async {
     await _plugin.cancel(_dailyReminderId);
 
     final now = tz.TZDateTime.now(tz.local);
@@ -104,7 +140,7 @@ class NotificationService {
     await _plugin.zonedSchedule(
       _dailyReminderId,
       'الحديث المهجور',
-      _getTodaysBody(),
+      buildDailyReminderBody(userName: userName, tone: tone),
       scheduled,
       NotificationDetails(
         android: const AndroidNotificationDetails(
