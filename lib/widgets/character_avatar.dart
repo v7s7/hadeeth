@@ -171,26 +171,42 @@ class _CharacterAvatarPainter extends CustomPainter {
   }
 
   void _ghutra(Canvas canvas, {bool shmagh = false}) {
-    _poly(canvas, [
-      const Offset(202, 88),
-      const Offset(310, 88),
-      const Offset(335, 232),
-      const Offset(286, 210),
-      const Offset(256, 238),
-      const Offset(226, 210),
-      const Offset(177, 232),
-    ], const Color(0xFFF7F4EB));
+    const clothPoints = [
+      Offset(202, 88),
+      Offset(310, 88),
+      Offset(335, 232),
+      Offset(286, 210),
+      Offset(256, 238),
+      Offset(226, 210),
+      Offset(177, 232),
+    ];
+    _poly(canvas, clothPoints, const Color(0xFFF7F4EB));
     if (shmagh) {
+      // Clip the pattern to the cloth minus the face oval, so the diagonal
+      // lines only ever paint on fabric — never across the face or past
+      // the headdress silhouette.
+      final patternClip = Path.combine(
+        PathOperation.difference,
+        Path()..addPolygon(clothPoints, true),
+        Path()
+          ..addOval(Rect.fromCenter(
+              center: const Offset(256, 148), width: 100, height: 124)),
+      );
+      canvas.save();
+      canvas.clipPath(patternClip);
       for (var offset = -70.0; offset <= 70; offset += 24) {
         _line(canvas, Offset(205 + offset, 90), Offset(330 + offset, 224), 3,
             const Color(0xBEBE3F35));
         _line(canvas, Offset(330 - offset, 90), Offset(205 - offset, 224), 3,
             const Color(0xA0BE3F35));
       }
+      canvas.restore();
     }
+    _ellipse(canvas, const Offset(256, 148), 50, 62, const Color(0xFFE2B188));
+    // Agal cord drawn last, on top of the face, so it reads as one clean
+    // band across the forehead instead of being clipped by the face oval.
     _line(canvas, const Offset(210, 98), const Offset(302, 98), 13,
         const Color(0xFF1D1C1B));
-    _ellipse(canvas, const Offset(256, 148), 50, 62, const Color(0xFFE2B188));
   }
 
   void _handsAndShoes(Canvas canvas) {
