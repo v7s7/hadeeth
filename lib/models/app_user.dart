@@ -14,6 +14,10 @@ class AppUser {
 
   /// جنس المستخدم لتخصيص الشخصية والنصوص العربية.
   final UserGender? gender;
+  final String? characterId;
+  final String? activeAccessoryId;
+  final bool completedOnboarding;
+  final bool completedWelcome;
 
   const AppUser({
     required this.id,
@@ -23,6 +27,10 @@ class AppUser {
     required this.isDisabled,
     required this.createdAt,
     this.gender,
+    this.characterId,
+    this.activeAccessoryId,
+    this.completedOnboarding = false,
+    this.completedWelcome = false,
   });
 
   AppUser copyWith({
@@ -30,6 +38,10 @@ class AppUser {
     UserRole? role,
     bool? isDisabled,
     UserGender? gender,
+    String? characterId,
+    String? activeAccessoryId,
+    bool? completedOnboarding,
+    bool? completedWelcome,
   }) {
     return AppUser(
       id: id,
@@ -39,6 +51,10 @@ class AppUser {
       isDisabled: isDisabled ?? this.isDisabled,
       createdAt: createdAt,
       gender: gender ?? this.gender,
+      characterId: characterId ?? this.characterId,
+      activeAccessoryId: activeAccessoryId ?? this.activeAccessoryId,
+      completedOnboarding: completedOnboarding ?? this.completedOnboarding,
+      completedWelcome: completedWelcome ?? this.completedWelcome,
     );
   }
 
@@ -50,6 +66,10 @@ class AppUser {
       'isDisabled': isDisabled,
       'createdAt': Timestamp.fromDate(createdAt),
       if (gender != null) 'gender': gender!.name,
+      if (characterId != null) 'characterId': characterId,
+      if (activeAccessoryId != null) 'activeAccessoryId': activeAccessoryId,
+      'completedOnboarding': completedOnboarding,
+      'completedWelcome': completedWelcome,
     };
   }
 
@@ -66,6 +86,10 @@ class AppUser {
       gender: map.containsKey('gender')
           ? UserGender.fromString(map['gender'] as String?)
           : null,
+      characterId: map['characterId'] as String?,
+      activeAccessoryId: map['activeAccessoryId'] as String?,
+      completedOnboarding: map['completedOnboarding'] as bool? ?? false,
+      completedWelcome: map['completedWelcome'] as bool? ?? false,
     );
   }
 }

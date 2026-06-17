@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -6,8 +8,9 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 
 /// شاشة البداية: شعار التطبيق واسمه ثم التحويل إلى:
-/// - شاشة اختيار الجنس (أول تشغيل — لم يكمل الترحيب)
-/// - الشاشة الرئيسية (التشغيلات اللاحقة)
+/// - شاشة التعريف الأولى إذا لم تُعرض من قبل
+/// - شاشة اختيار الاسم والشخصية إذا لم يكتمل الترحيب
+/// - الشاشة الرئيسية بعد إكمال الترحيب
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -33,9 +36,27 @@ class _SplashScreenState extends State<SplashScreen> {
     ]);
 
     if (!mounted) return;
-    final completed = LocalStorageService.cachedWelcome ?? false;
+    var completedWelcome = LocalStorageService.cachedWelcome ?? false;
+    var seenOnboarding = await storage.hasSeenOnboarding();
 
-    if (completed) {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        final data = doc.data();
+        completedWelcome = data?['completedWelcome'] as bool? ?? false;
+        seenOnboarding = data?['completedOnboarding'] as bool? ?? false;
+      }
+    } catch (_) {
+      // إن تعذّر الوصول للحساب نستخدم حالة الجهاز كمسار احتياطي فقط.
+    }
+
+    if (!seenOnboarding && !completedWelcome) {
+      context.go('/onboarding');
+    } else if (completedWelcome) {
       context.go('/home');
     } else {
       context.go('/welcome');

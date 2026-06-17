@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'notification_service.dart';
+
 import '../models/user_gender.dart';
 import '../models/user_progress.dart';
 
@@ -17,9 +19,12 @@ class LocalStorageService {
   static const String _notifEnabledKey = 'notifications_enabled';
   static const String _notifHourKey = 'notifications_hour';
   static const String _notifMinuteKey = 'notifications_minute';
+  static const String _notifToneKey = 'notifications_tone';
   static const String _fontScaleKey = 'font_scale';
   static const String _dailyGoalKey = 'daily_goal';
   static const String _characterKey = 'character_id';
+  static const String _activeAccessoryKey = 'active_accessory_id';
+  static const String _preferredNameKey = 'preferred_name';
 
   // ذاكرة مؤقتة ثابتة — مشتركة بين جميع نسخ LocalStorageService.
   static UserGender? _genderCache;
@@ -27,6 +32,9 @@ class LocalStorageService {
   static double? _fontScaleCache;
   static int? _dailyGoalCache;
   static String? _characterCache;
+  static String? _activeAccessoryCache;
+  static String? _preferredNameCache;
+  static NotificationTone? _notificationToneCache;
 
   /// الجنس المُخزَّن مؤقتًا — null إن لم يُحمَّل بعد.
   static UserGender? get cachedGender => _genderCache;
@@ -43,6 +51,15 @@ class LocalStorageService {
   /// معرّف الشخصية المُخزَّن مؤقتًا — null إن لم يُحمَّل بعد.
   static String? get cachedCharacterId => _characterCache;
 
+  /// معرّف الرفيق/الإضافة النشطة للشخصية.
+  static String? get cachedActiveAccessoryId => _activeAccessoryCache;
+
+  /// الاسم الشخصي المحلي المستخدم للضيوف أو تخصيص الترحيب.
+  static String? get cachedPreferredName => _preferredNameCache;
+
+  /// نغمة التذكير اليومي المخزنة مؤقتًا.
+  static NotificationTone? get cachedNotificationTone => _notificationToneCache;
+
   /// يُسخِّن الذاكرة المؤقتة مسبقًا — يُستدعى في شاشة البداية أثناء عرض الشعار.
   Future<void> preload() async {
     final prefs = await SharedPreferences.getInstance();
@@ -52,6 +69,10 @@ class LocalStorageService {
     _fontScaleCache = prefs.getDouble(_fontScaleKey) ?? 1.0;
     _dailyGoalCache = prefs.getInt(_dailyGoalKey) ?? 3;
     _characterCache = prefs.getString(_characterKey);
+    _activeAccessoryCache = prefs.getString(_activeAccessoryKey);
+    _preferredNameCache = prefs.getString(_preferredNameKey);
+    _notificationToneCache =
+        NotificationTone.fromName(prefs.getString(_notifToneKey));
   }
 
   // ────────────────────────── Progress ──────────────────────────
@@ -156,6 +177,10 @@ class LocalStorageService {
     if (_characterCache != null) return _characterCache;
     final prefs = await SharedPreferences.getInstance();
     _characterCache = prefs.getString(_characterKey);
+    _activeAccessoryCache = prefs.getString(_activeAccessoryKey);
+    _preferredNameCache = prefs.getString(_preferredNameKey);
+    _notificationToneCache =
+        NotificationTone.fromName(prefs.getString(_notifToneKey));
     return _characterCache;
   }
 
@@ -163,6 +188,41 @@ class LocalStorageService {
     _characterCache = id;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_characterKey, id);
+  }
+
+  Future<String?> loadActiveAccessoryId() async {
+    if (_activeAccessoryCache != null) return _activeAccessoryCache;
+    final prefs = await SharedPreferences.getInstance();
+    _activeAccessoryCache = prefs.getString(_activeAccessoryKey);
+    return _activeAccessoryCache;
+  }
+
+  Future<void> saveActiveAccessoryId(String id) async {
+    _activeAccessoryCache = id;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_activeAccessoryKey, id);
+  }
+
+  // ────────────────────────── Preferred Name ──────────────────────────
+
+  Future<String?> loadPreferredName() async {
+    if (_preferredNameCache != null) return _preferredNameCache;
+    final prefs = await SharedPreferences.getInstance();
+    _preferredNameCache = prefs.getString(_preferredNameKey);
+    _notificationToneCache =
+        NotificationTone.fromName(prefs.getString(_notifToneKey));
+    return _preferredNameCache;
+  }
+
+  Future<void> savePreferredName(String name) async {
+    final trimmed = name.trim();
+    _preferredNameCache = trimmed.isEmpty ? null : trimmed;
+    final prefs = await SharedPreferences.getInstance();
+    if (trimmed.isEmpty) {
+      await prefs.remove(_preferredNameKey);
+    } else {
+      await prefs.setString(_preferredNameKey, trimmed);
+    }
   }
 
   // ────────────────────────── Notifications ──────────────────────────
@@ -191,5 +251,19 @@ class LocalStorageService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_notifHourKey, hour);
     await prefs.setInt(_notifMinuteKey, minute);
+  }
+
+  Future<NotificationTone> getNotificationTone() async {
+    if (_notificationToneCache != null) return _notificationToneCache!;
+    final prefs = await SharedPreferences.getInstance();
+    _notificationToneCache =
+        NotificationTone.fromName(prefs.getString(_notifToneKey));
+    return _notificationToneCache!;
+  }
+
+  Future<void> saveNotificationTone(NotificationTone tone) async {
+    _notificationToneCache = tone;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_notifToneKey, tone.name);
   }
 }

@@ -19,7 +19,8 @@ class SessionService extends ChangeNotifier {
   bool _isLoading = false;
 
   StreamSubscription<User?>? _authSubscription;
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _profileSubscription;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+      _profileSubscription;
 
   SessionService() {
     _listenToAuth();
@@ -79,6 +80,18 @@ class SessionService extends ChangeNotifier {
   /// جنس المستخدم المسجَّل (null للضيف أو قبل إتمام الترحيب).
   UserGender? get gender => _profile?.gender;
 
+  /// الشخصية المختارة للحساب الحالي.
+  String? get characterId => _profile?.characterId;
+
+  /// الإضافة النشطة التي تظهر مع شخصية الحساب.
+  String? get activeAccessoryId => _profile?.activeAccessoryId;
+
+  /// هل أكمل الحساب الحالي شاشة الاسم والشخصية.
+  bool get hasCompletedWelcome => _profile?.completedWelcome ?? false;
+
+  /// هل شاهد الحساب الحالي شاشة التعريف الأولى.
+  bool get hasCompletedOnboarding => _profile?.completedOnboarding ?? false;
+
   /// الاسم المعروض، أو البريد الإلكتروني إن لم يُحدَّد اسم.
   String? get displayName {
     final name = _profile?.displayName;
@@ -123,11 +136,16 @@ class SessionService extends ChangeNotifier {
   /// إنشاء حساب جديد بالبريد الإلكتروني وكلمة المرور.
   ///
   /// تُعيد رسالة خطأ بالعربية عند الفشل، أو null عند النجاح.
-  Future<String?> registerWithEmail(String email, String password, String displayName) async {
+  Future<String?> registerWithEmail(
+    String email,
+    String password,
+    String displayName,
+  ) async {
     _isLoading = true;
     notifyListeners();
     try {
-      final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      final credential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
@@ -155,6 +173,138 @@ class SessionService extends ChangeNotifier {
       return 'تعذّر إنشاء الحساب. تأكد من اتصالك بالإنترنت وإعداد Firebase.';
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> currentAccountHasCompletedWelcome() async {
+    final user = _user ?? FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+    final profile = _profile;
+    if (profile != null) return profile.completedWelcome;
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final data = doc.data();
+      if (data != null) {
+        _profile = AppUser.fromMap(doc.id, data);
+        notifyListeners();
+      }
+      return data?['completedWelcome'] as bool? ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<({bool completedOnboarding, bool completedWelcome})>
+      currentAccountStartState() async {
+    final user = _user ?? FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return (completedOnboarding: false, completedWelcome: false);
+    }
+    final profile = _profile;
+    if (profile != null) {
+      return (
+        completedOnboarding: profile.completedOnboarding,
+        completedWelcome: profile.completedWelcome,
+      );
+    }
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final data = doc.data();
+      if (data != null) {
+        _profile = AppUser.fromMap(doc.id, data);
+        notifyListeners();
+      }
+      return (
+        completedOnboarding: data?['completedOnboarding'] as bool? ?? false,
+        completedWelcome: data?['completedWelcome'] as bool? ?? false,
+      );
+    } catch (_) {
+      return (completedOnboarding: false, completedWelcome: false);
+    }
+  }
+
+  Future<void> markOnboardingCompleteForAccount() async {
+    final user = _user ?? FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
+      {'completedOnboarding': true},
+      SetOptions(merge: true),
+    );
+
+    final current = _profile;
+    if (current != null) {
+      _profile = current.copyWith(completedOnboarding: true);
+      notifyListeners();
+    }
+  }
+
+  Future<void> savePersonalization({
+    required UserGender gender,
+    required String characterId,
+    required String preferredName,
+    required bool completedWelcome,
+  }) async {
+    final trimmedName = preferredName.trim();
+    final user = _user ?? FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    if (trimmedName.isNotEmpty && trimmedName != user.displayName) {
+      try {
+        await user.updateDisplayName(trimmedName);
+      } catch (_) {}
+    }
+
+    final data = <String, dynamic>{
+      'gender': gender.name,
+      'characterId': characterId,
+      'activeAccessoryId':
+          _profile?.activeAccessoryId ?? 'misbah_amber',
+      'completedOnboarding': true,
+      'completedWelcome': completedWelcome,
+      if (trimmedName.isNotEmpty) 'displayName': trimmedName,
+    };
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .set(data, SetOptions(merge: true));
+
+    final current = _profile;
+    if (current != null) {
+      _profile = current.copyWith(
+        displayName: trimmedName.isNotEmpty ? trimmedName : current.displayName,
+        gender: gender,
+        characterId: characterId,
+        activeAccessoryId: current.activeAccessoryId ?? 'misbah_amber',
+        completedOnboarding: true,
+        completedWelcome: completedWelcome,
+      );
+      notifyListeners();
+    }
+  }
+
+  Future<void> saveActiveAccessory(String accessoryId) async {
+    final user = _user ?? FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
+      {'activeAccessoryId': accessoryId},
+      SetOptions(merge: true),
+    );
+
+    final current = _profile;
+    if (current != null) {
+      _profile = current.copyWith(activeAccessoryId: accessoryId);
       notifyListeners();
     }
   }

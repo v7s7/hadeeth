@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
+import '../../services/local_storage_service.dart';
+import '../../services/session_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 
@@ -67,8 +70,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
-  void _finish() {
-    context.go('/home');
+  Future<void> _finish() async {
+    final session = context.read<SessionService>();
+    final storage = LocalStorageService();
+    await storage.markOnboardingComplete();
+    await session.markOnboardingCompleteForAccount();
+    final accountState = await session.currentAccountStartState();
+    final completedWelcome = accountState.completedWelcome ||
+        await storage.hasCompletedWelcome();
+    if (!mounted) return;
+    context.go(completedWelcome ? '/home' : '/welcome');
   }
 
   @override

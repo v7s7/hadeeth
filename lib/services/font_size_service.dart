@@ -22,7 +22,7 @@ enum FontScaleOption {
 
 /// يُدير حجم الخط في التطبيق ويُخطر الشاشات عند التغيير.
 ///
-/// يُستخدم عبر [context.watch<FontSizeService>()] في أي شاشة تحتاج مقياس الخط.
+/// يطبّقه جذر التطبيق على [MediaQuery.textScaler] ليؤثر على كل النصوص.
 class FontSizeService extends ChangeNotifier {
   double _scale;
 

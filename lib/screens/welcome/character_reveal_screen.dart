@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/app_characters.dart';
 import '../../models/user_gender.dart';
 import '../../services/local_storage_service.dart';
+import '../../services/session_service.dart';
+import '../../widgets/character_avatar.dart';
 
 /// شاشة الكشف عن الشخصية — تظهر بعد اختيار الجنس مباشرة.
 ///
@@ -21,6 +24,7 @@ class _CharacterRevealScreenState extends State<CharacterRevealScreen>
     with SingleTickerProviderStateMixin {
   UserGender _gender = UserGender.male; // overwritten in didChangeDependencies
   CharacterOption? _character;
+  String? _preferredName;
   late AnimationController _ctrl;
   late Animation<double> _scale;
   late Animation<double> _fade;
@@ -69,8 +73,15 @@ class _CharacterRevealScreenState extends State<CharacterRevealScreen>
   Future<void> _loadCharacter() async {
     final id = LocalStorageService.cachedCharacterId ??
         await LocalStorageService().loadCharacterId();
+    final name = LocalStorageService.cachedPreferredName ??
+        await LocalStorageService().loadPreferredName();
     final char = AppCharacters.findById(id) ?? AppCharacters.defaultFor(_gender);
-    if (mounted) setState(() => _character = char);
+    if (mounted) {
+      setState(() {
+        _character = char;
+        _preferredName = name;
+      });
+    }
   }
 
   @override
@@ -80,7 +91,16 @@ class _CharacterRevealScreenState extends State<CharacterRevealScreen>
   }
 
   Future<void> _finish() async {
+    final session = context.read<SessionService>();
     await LocalStorageService().markWelcomeComplete();
+    final characterId =
+        _character?.id ?? AppCharacters.defaultFor(_gender).id;
+    await session.savePersonalization(
+          gender: _gender,
+          characterId: characterId,
+          preferredName: _preferredName ?? '',
+          completedWelcome: true,
+        );
     if (!mounted) return;
     context.go('/home');
   }
@@ -90,6 +110,9 @@ class _CharacterRevealScreenState extends State<CharacterRevealScreen>
     final primary = Color(_gender.primaryColorValue);
     final secondary = Color(_gender.secondaryColorValue);
     final glow = Color(_gender.glowColorValue);
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final characterSize = (screenHeight * 0.24).clamp(140.0, 200.0).toDouble();
+    final textGap = (screenHeight * 0.045).clamp(20.0, 40.0).toDouble();
 
     return Scaffold(
       body: Container(
@@ -108,8 +131,16 @@ class _CharacterRevealScreenState extends State<CharacterRevealScreen>
           ),
         ),
         child: SafeArea(
-          child: Column(
-            children: [
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      children: [
+              const SizedBox(height: 12),
+              const _WelcomeStepIndicator(currentStep: 2),
               const Spacer(),
               // ── Animated character ──────────────────────────────────────────
               AnimatedBuilder(
@@ -128,8 +159,8 @@ class _CharacterRevealScreenState extends State<CharacterRevealScreen>
                   children: [
                     // Glow backdrop
                     Container(
-                      width: 200,
-                      height: 200,
+                      width: characterSize,
+                      height: characterSize,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         boxShadow: [
@@ -142,17 +173,20 @@ class _CharacterRevealScreenState extends State<CharacterRevealScreen>
                       ),
                     ),
                     if (_character != null)
-                      Image.asset(
-                        _character!.assetPath,
-                        height: 200,
-                        fit: BoxFit.contain,
+                      Semantics(
+                        label: 'شخصيتك المختارة: ${_character!.labelAr}',
+                        image: true,
+                        child: CharacterAvatar(
+                          character: _character!,
+                          height: characterSize,
+                        ),
                       )
                     else
-                      const SizedBox(height: 200),
+                      SizedBox(height: characterSize),
                   ],
                 ),
               ),
-              const SizedBox(height: 40),
+              SizedBox(height: textGap),
               // ── Welcome text ────────────────────────────────────────────────
               AnimatedBuilder(
                 animation: _ctrl,
@@ -168,7 +202,9 @@ class _CharacterRevealScreenState extends State<CharacterRevealScreen>
                 child: Column(
                   children: [
                     Text(
-                      _gender.welcomeText,
+                      _preferredName == null || _preferredName!.trim().isEmpty
+                          ? _gender.welcomeText
+                          : 'مرحبًا، ${_preferredName!.trim()}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 34,
@@ -179,7 +215,9 @@ class _CharacterRevealScreenState extends State<CharacterRevealScreen>
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'شخصيتك في المستوى الأول\n${_gender.continueVerb} التعلم لتطوّرها',
+                      _character == null
+                          ? 'اختر الشخصية التي تحبها وابدأ رحلتك'
+                          : '${_character!.labelAr} سترافقك في القراءة والتذكير اليومي',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.6),
@@ -189,7 +227,7 @@ class _CharacterRevealScreenState extends State<CharacterRevealScreen>
                       textDirection: TextDirection.rtl,
                     ),
                     const SizedBox(height: 28),
-                    // Level badge
+                    // Character badge
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 10),
@@ -206,7 +244,7 @@ class _CharacterRevealScreenState extends State<CharacterRevealScreen>
                               color: secondary, size: 18),
                           const SizedBox(width: 6),
                           Text(
-                            'المستوى 1 — ${_gender.studentTitle}',
+                            _character?.labelAr ?? _gender.studentTitle,
                             style: TextStyle(
                               color: secondary,
                               fontSize: 14,
@@ -235,10 +273,43 @@ class _CharacterRevealScreenState extends State<CharacterRevealScreen>
                   ),
                 ),
               ),
-            ],
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),
+    );
+  }
+}
+
+
+class _WelcomeStepIndicator extends StatelessWidget {
+  final int currentStep;
+
+  const _WelcomeStepIndicator({required this.currentStep});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(2, (index) {
+        final step = index + 1;
+        final active = currentStep == step;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          width: active ? 34 : 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: active ? Colors.white : Colors.white.withOpacity(0.25),
+            borderRadius: BorderRadius.circular(99),
+          ),
+        );
+      }),
     );
   }
 }

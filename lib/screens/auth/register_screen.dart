@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../services/local_storage_service.dart';
 import '../../services/session_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
@@ -44,10 +45,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
 
     if (!mounted) return;
+    if (error == null) {
+      await LocalStorageService().savePreferredName(_nameController.text);
+    }
+    if (!mounted) return;
     if (error != null) {
       setState(() => _errorMessage = error);
     } else {
-      context.go('/home');
+      final completedWelcome =
+          await session.currentAccountHasCompletedWelcome();
+      if (!mounted) return;
+      context.go(completedWelcome ? '/home' : '/welcome');
     }
   }
 

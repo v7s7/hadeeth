@@ -10,7 +10,7 @@ import '../../theme/app_text_styles.dart';
 import '../../widgets/empty_state.dart';
 import 'admin_guard.dart';
 
-/// شاشة إدارة المستخدمين: عرض الأدوار، ترقية/تنزيل المشرفين، وتفعيل/تعطيل الحسابات.
+/// شاشة إدارة المستخدمين: عرض الأدوار، منح/سحب صلاحية مشرف المحتوى، وتفعيل/تعطيل الحسابات.
 class AdminUsersScreen extends StatelessWidget {
   const AdminUsersScreen({super.key});
 
@@ -92,6 +92,7 @@ class _UserCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSuperAdmin = user.role == UserRole.superAdmin;
+    final isAdmin = user.role == UserRole.admin;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -105,7 +106,9 @@ class _UserCard extends StatelessWidget {
                 CircleAvatar(
                   backgroundColor: AppColors.primaryLight,
                   child: Icon(
-                    isSuperAdmin ? Icons.admin_panel_settings : Icons.person_outline,
+                    isSuperAdmin || isAdmin
+                        ? Icons.admin_panel_settings
+                        : Icons.person_outline,
                     color: AppColors.primary,
                   ),
                 ),
@@ -137,13 +140,13 @@ class _UserCard extends StatelessWidget {
             const Divider(height: 24),
             Row(
               children: [
-                Expanded(child: Text('مشرف عام', style: AppTextStyles.body)),
+                Expanded(child: Text('مشرف محتوى', style: AppTextStyles.body)),
                 Switch(
-                  value: isSuperAdmin,
-                  onChanged: isSelf
+                  value: isAdmin,
+                  onChanged: isSelf || isSuperAdmin
                       ? null
                       : (value) => _updateField(context, {
-                            'role': (value ? UserRole.superAdmin : UserRole.user).name,
+                            'role': (value ? UserRole.admin : UserRole.user).name,
                           }),
                 ),
               ],
@@ -153,15 +156,19 @@ class _UserCard extends StatelessWidget {
                 Expanded(child: Text('الحساب مفعل', style: AppTextStyles.body)),
                 Switch(
                   value: !user.isDisabled,
-                  onChanged: isSelf ? null : (value) => _updateField(context, {'isDisabled': !value}),
+                  onChanged: isSelf || isSuperAdmin
+                      ? null
+                      : (value) => _updateField(context, {'isDisabled': !value}),
                 ),
               ],
             ),
-            if (isSelf)
+            if (isSelf || isSuperAdmin)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  'لا يمكنك تعديل دورك أو حالة حسابك الخاص.',
+                  isSelf
+                      ? 'لا يمكنك تعديل دورك أو حالة حسابك الخاص.'
+                      : 'لا يمكن تعديل صلاحية المشرف العام من هذه الشاشة.',
                   style: AppTextStyles.caption,
                 ),
               ),

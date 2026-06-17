@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-
 import '../../models/app_characters.dart';
 import '../../models/user_gender.dart';
 import '../../services/local_storage_service.dart';
-import '../../services/progress_service.dart';
+import '../../services/session_service.dart';
+import '../../widgets/character_avatar.dart';
 
 /// شاشة اختيار الجنس والشخصية — أول شاشة يراها المستخدم الجديد.
 ///
@@ -22,6 +22,9 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen>
     with TickerProviderStateMixin {
   UserGender? _selectedGender;
   CharacterOption? _selectedCharacter;
+  final _nameController = TextEditingController();
+  final _scrollController = ScrollController();
+  final _nameFocusNode = FocusNode();
   bool _confirming = false;
 
   late AnimationController _maleCtrl;
@@ -30,6 +33,18 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen>
   @override
   void initState() {
     super.initState();
+    final session = context.read<SessionService>();
+    final sessionName = session.displayName;
+    final localName = LocalStorageService.cachedPreferredName;
+    _nameController.text = sessionName ?? localName ?? '';
+    _selectedGender = session.gender ?? LocalStorageService.cachedGender;
+    _selectedCharacter = AppCharacters.findById(
+          session.characterId ?? LocalStorageService.cachedCharacterId,
+        ) ??
+        (_selectedGender != null
+            ? AppCharacters.defaultFor(_selectedGender!)
+            : null);
+    _nameFocusNode.addListener(_scrollToButtonWhenKeyboardOpens);
     _maleCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
     _femaleCtrl = AnimationController(
@@ -42,9 +57,26 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen>
 
   @override
   void dispose() {
+    _nameFocusNode.removeListener(_scrollToButtonWhenKeyboardOpens);
+    _nameController.dispose();
+    _nameFocusNode.dispose();
+    _scrollController.dispose();
     _maleCtrl.dispose();
     _femaleCtrl.dispose();
     super.dispose();
+  }
+
+
+  void _scrollToButtonWhenKeyboardOpens() {
+    if (!_nameFocusNode.hasFocus) return;
+    Future.delayed(const Duration(milliseconds: 260), () {
+      if (!mounted || !_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   void _selectGender(UserGender gender) {
@@ -63,10 +95,18 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen>
     final gender = _selectedGender;
     final character = _selectedCharacter;
     if (gender == null || character == null || _confirming) return;
+    final session = context.read<SessionService>();
     setState(() => _confirming = true);
 
     await LocalStorageService().saveGender(gender);
     await LocalStorageService().saveCharacterId(character.id);
+    await LocalStorageService().savePreferredName(_nameController.text);
+    await session.savePersonalization(
+          gender: gender,
+          characterId: character.id,
+          preferredName: _nameController.text,
+          completedWelcome: false,
+        );
 
     if (!mounted) return;
     context.pushReplacement('/welcome/reveal', extra: _selectedGender);
@@ -77,55 +117,82 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen>
     return Scaffold(
       backgroundColor: const Color(0xFF0D1117),
       body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 40),
-            _buildHeader(),
-            const SizedBox(height: 36),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Builder(builder: (ctx) {
-                  final level = ctx.watch<ProgressService>().currentLevel.level;
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: _GenderCard(
-                          gender: UserGender.male,
-                          selected: _selectedGender == UserGender.male,
-                          selectedCharacter: _selectedGender == UserGender.male
-                              ? _selectedCharacter
-                              : null,
-                          currentLevel: level,
-                          entranceAnim: _maleCtrl,
-                          onGenderTap: () => _selectGender(UserGender.male),
-                          onCharacterTap: _selectCharacter,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+            final availableWidth = constraints.maxWidth;
+            final contentWidth = availableWidth > 900 ? 900.0 : availableWidth;
+            final horizontalPadding = availableWidth < 380 ? 14.0 : 20.0;
+            final cardHeight = (constraints.maxHeight - 270 - bottomInset)
+                .clamp(300.0, availableWidth >= 700 ? 500.0 : 430.0)
+                .toDouble();
+
+            return SingleChildScrollView(
+              controller: _scrollController,
+              padding: EdgeInsets.only(bottom: bottomInset + 24),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Center(
+                  child: SizedBox(
+                    width: contentWidth,
+                    child: Column(
+                      children: [
+                    const SizedBox(height: 32),
+                    const _WelcomeStepIndicator(currentStep: 1),
+                    const SizedBox(height: 16),
+                    _buildHeader(),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      height: cardHeight,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: _GenderCard(
+                                gender: UserGender.male,
+                                selected: _selectedGender == UserGender.male,
+                                selectedCharacter:
+                                    _selectedGender == UserGender.male
+                                        ? _selectedCharacter
+                                        : null,
+                                entranceAnim: _maleCtrl,
+                                onGenderTap: () => _selectGender(UserGender.male),
+                                onCharacterTap: _selectCharacter,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: _GenderCard(
+                                gender: UserGender.female,
+                                selected: _selectedGender == UserGender.female,
+                                selectedCharacter:
+                                    _selectedGender == UserGender.female
+                                        ? _selectedCharacter
+                                        : null,
+                                entranceAnim: _femaleCtrl,
+                                onGenderTap: () => _selectGender(UserGender.female),
+                                onCharacterTap: _selectCharacter,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: _GenderCard(
-                          gender: UserGender.female,
-                          selected: _selectedGender == UserGender.female,
-                          selectedCharacter: _selectedGender == UserGender.female
-                              ? _selectedCharacter
-                              : null,
-                          currentLevel: level,
-                          entranceAnim: _femaleCtrl,
-                          onGenderTap: () => _selectGender(UserGender.female),
-                          onCharacterTap: _selectCharacter,
-                        ),
-                      ),
-                    ],
-                  );
-                }),
+                    ),
+                    const SizedBox(height: 20),
+                    _buildNameField(),
+                    const SizedBox(height: 12),
+                    _buildContinueButton(),
+                        const SizedBox(height: 28),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 28),
-            _buildContinueButton(),
-            const SizedBox(height: 36),
-          ],
+            );
+          },
         ),
       ),
     );
@@ -154,6 +221,40 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen>
           textDirection: TextDirection.rtl,
         ),
       ],
+    );
+  }
+
+  Widget _buildNameField() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: TextField(
+        controller: _nameController,
+        focusNode: _nameFocusNode,
+        scrollPadding: const EdgeInsets.only(bottom: 140),
+        textAlign: TextAlign.right,
+        textDirection: TextDirection.rtl,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          labelText: 'اسمك',
+          hintText: 'كيف تحب أن نخاطبك؟',
+          labelStyle: TextStyle(color: Colors.white.withOpacity(0.75)),
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.35)),
+          filled: true,
+          fillColor: Colors.white.withOpacity(0.06),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Colors.white70),
+          ),
+        ),
+      ),
     );
   }
 
@@ -218,13 +319,40 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen>
   }
 }
 
+
+class _WelcomeStepIndicator extends StatelessWidget {
+  final int currentStep;
+
+  const _WelcomeStepIndicator({required this.currentStep});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(2, (index) {
+        final step = index + 1;
+        final active = currentStep == step;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          width: active ? 34 : 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: active ? Colors.white : Colors.white.withOpacity(0.25),
+            borderRadius: BorderRadius.circular(99),
+          ),
+        );
+      }),
+    );
+  }
+}
+
 // ── بطاقة الجنس ──────────────────────────────────────────────────────────────
 
 class _GenderCard extends StatelessWidget {
   final UserGender gender;
   final bool selected;
   final CharacterOption? selectedCharacter;
-  final int currentLevel;
   final AnimationController entranceAnim;
   final VoidCallback onGenderTap;
   final ValueChanged<CharacterOption> onCharacterTap;
@@ -233,7 +361,6 @@ class _GenderCard extends StatelessWidget {
     required this.gender,
     required this.selected,
     required this.selectedCharacter,
-    required this.currentLevel,
     required this.entranceAnim,
     required this.onGenderTap,
     required this.onCharacterTap,
@@ -256,7 +383,7 @@ class _GenderCard extends StatelessWidget {
         ).value;
         return Transform.scale(
           scale: t,
-          child: Opacity(opacity: t.clamp(0.0, 1.0), child: child),
+          child: Opacity(opacity: t.clamp(0.0, 1.0).toDouble(), child: child),
         );
       },
       child: GestureDetector(
@@ -295,21 +422,14 @@ class _GenderCard extends StatelessWidget {
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeOut,
                   child: selected && selectedCharacter != null
-                      ? Image.asset(
-                          selectedCharacter!.assetPath,
+                      ? CharacterAvatar(
+                          character: selectedCharacter!,
                           height: 110,
-                          fit: BoxFit.contain,
                         )
-                      : Image.asset(
-                          _representative.assetPath,
+                      : CharacterAvatar(
+                          character: _representative,
                           height: 110,
-                          fit: BoxFit.contain,
-                          color: selected
-                              ? null
-                              : Colors.white.withOpacity(0.4),
-                          colorBlendMode: selected
-                              ? null
-                              : BlendMode.modulate,
+                          opacity: selected ? 1 : 0.4,
                         ),
                 ),
                 const SizedBox(height: 12),
@@ -341,7 +461,6 @@ class _GenderCard extends StatelessWidget {
                       ? _CharacterPicker(
                           characters: AppCharacters.forGender(gender),
                           selected: selectedCharacter,
-                          currentLevel: currentLevel,
                           accentColor: _secondary,
                           glowColor: _glow,
                           onTap: onCharacterTap,
@@ -362,7 +481,6 @@ class _GenderCard extends StatelessWidget {
 class _CharacterPicker extends StatelessWidget {
   final List<CharacterOption> characters;
   final CharacterOption? selected;
-  final int currentLevel;
   final Color accentColor;
   final Color glowColor;
   final ValueChanged<CharacterOption> onTap;
@@ -370,7 +488,6 @@ class _CharacterPicker extends StatelessWidget {
   const _CharacterPicker({
     required this.characters,
     required this.selected,
-    required this.currentLevel,
     required this.accentColor,
     required this.glowColor,
     required this.onTap,
@@ -390,10 +507,9 @@ class _CharacterPicker extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: characters.map((char) {
-              final isUnlocked = char.isUnlockedAt(currentLevel);
-              final isSelected = selected?.id == char.id && isUnlocked;
+              final isSelected = selected?.id == char.id;
               return GestureDetector(
-                onTap: isUnlocked ? () => onTap(char) : null,
+                onTap: () => onTap(char),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   curve: Curves.easeOut,
@@ -416,49 +532,15 @@ class _CharacterPicker extends StatelessWidget {
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      // Character image (dimmed if locked)
-                      ColorFiltered(
-                        colorFilter: isUnlocked
-                            ? const ColorFilter.mode(Colors.transparent, BlendMode.multiply)
-                            : const ColorFilter.matrix([
-                                0.2126, 0.7152, 0.0722, 0, 0,
-                                0.2126, 0.7152, 0.0722, 0, 0,
-                                0.2126, 0.7152, 0.0722, 0, 0,
-                                0,      0,      0,      0.4, 0,
-                              ]),
-                        child: Image.asset(
-                          char.assetPath,
+                      Semantics(
+                        label: 'اختيار شخصية ${char.labelAr}',
+                        button: true,
+                        child: CharacterAvatar(
+                          character: char,
                           height: 58,
                           width: 46,
-                          fit: BoxFit.contain,
                         ),
                       ),
-                      // Lock overlay
-                      if (!isUnlocked)
-                        Container(
-                          width: 46,
-                          height: 58,
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.45),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.lock_rounded,
-                                  color: Colors.white70, size: 16),
-                              const SizedBox(height: 2),
-                              Text(
-                                'L${char.unlockLevel}',
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                     ],
                   ),
                 ),
@@ -466,7 +548,7 @@ class _CharacterPicker extends StatelessWidget {
             }).toList(),
           ),
           const SizedBox(height: 8),
-          if (selected != null && selected!.isUnlockedAt(currentLevel))
+          if (selected != null)
             Text(
               selected!.labelAr,
               style: TextStyle(
@@ -477,7 +559,7 @@ class _CharacterPicker extends StatelessWidget {
             )
           else
             Text(
-              'شخصيات تُفتح مع التقدم',
+              'كل الشخصيات متاحة من البداية',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.3),
                 fontSize: 10,

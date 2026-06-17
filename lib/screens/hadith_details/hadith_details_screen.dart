@@ -7,7 +7,6 @@ import 'package:share_plus/share_plus.dart';
 import '../../models/hadith.dart';
 import '../../models/app_characters.dart';
 import '../../services/category_repository.dart';
-import '../../services/font_size_service.dart';
 import '../../services/hadith_repository.dart';
 import '../../services/local_storage_service.dart';
 import '../../services/progress_service.dart';
@@ -101,12 +100,12 @@ class _HadithDetailsScreenState extends State<HadithDetailsScreen> {
     _showSnackBar('تم نسخ الحديث ✓');
   }
 
-  void _openReadingMode(Hadith hadith, double fontScale) {
+  void _openReadingMode(Hadith hadith) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _ReadingModeSheet(hadith: hadith, fontScale: fontScale),
+      builder: (_) => _ReadingModeSheet(hadith: hadith),
     );
   }
 
@@ -130,7 +129,6 @@ class _HadithDetailsScreenState extends State<HadithDetailsScreen> {
     }
 
     final progressService = context.watch<ProgressService>();
-    final fontScale = context.watch<FontSizeService>().scale;
     final isFavorite = progressService.isFavorite(hadith.id);
     final isLearned = progressService.isLearned(hadith.id);
     final category =
@@ -190,11 +188,7 @@ class _HadithDetailsScreenState extends State<HadithDetailsScreen> {
                     padding: const EdgeInsets.fromLTRB(18, 18, 18, 46),
                     child: Text(
                       hadith.hadithText,
-                      style: AppTextStyles.hadithText.copyWith(
-                        fontSize:
-                            (AppTextStyles.hadithText.fontSize ?? 20) * fontScale,
-                        height: 1.9,
-                      ),
+                      style: AppTextStyles.hadithText.copyWith(height: 1.9),
                       textAlign: TextAlign.right,
                     ),
                   ),
@@ -203,7 +197,7 @@ class _HadithDetailsScreenState extends State<HadithDetailsScreen> {
                   bottom: 8,
                   left: 8,
                   child: TextButton.icon(
-                    onPressed: () => _openReadingMode(hadith, fontScale),
+                    onPressed: () => _openReadingMode(hadith),
                     icon: const Icon(Icons.menu_book_outlined, size: 16),
                     label: const Text('وضع القراءة'),
                     style: TextButton.styleFrom(
@@ -326,14 +320,10 @@ class _HadithDetailsScreenState extends State<HadithDetailsScreen> {
 
 class _ReadingModeSheet extends StatelessWidget {
   final Hadith hadith;
-  final double fontScale;
-
-  const _ReadingModeSheet({required this.hadith, required this.fontScale});
+  const _ReadingModeSheet({required this.hadith});
 
   @override
   Widget build(BuildContext context) {
-    final textSize = 22.0 * fontScale;
-
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
       maxChildSize: 0.97,
@@ -365,7 +355,7 @@ class _ReadingModeSheet extends StatelessWidget {
                   '﷽',
                   style: AppTextStyles.hadithText.copyWith(
                     color: Colors.white38,
-                    fontSize: 18 * fontScale,
+                    fontSize: 18,
                   ),
                 ),
               ),
@@ -379,7 +369,7 @@ class _ReadingModeSheet extends StatelessWidget {
                       hadith.hadithText,
                       style: AppTextStyles.hadithText.copyWith(
                         color: const Color(0xFFF0EAD6),
-                        fontSize: textSize,
+                        fontSize: 22,
                         height: 2.0,
                       ),
                       textAlign: TextAlign.right,
@@ -390,7 +380,7 @@ class _ReadingModeSheet extends StatelessWidget {
                       '— ${hadith.narrator}',
                       style: AppTextStyles.caption.copyWith(
                         color: Colors.white38,
-                        fontSize: 14 * fontScale,
+                        fontSize: 14,
                         fontStyle: FontStyle.italic,
                       ),
                       textAlign: TextAlign.right,
@@ -400,7 +390,7 @@ class _ReadingModeSheet extends StatelessWidget {
                       hadith.fullSource,
                       style: AppTextStyles.caption.copyWith(
                         color: Colors.white24,
-                        fontSize: 12 * fontScale,
+                        fontSize: 12,
                       ),
                       textAlign: TextAlign.right,
                       textDirection: TextDirection.rtl,

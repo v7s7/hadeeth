@@ -42,7 +42,10 @@ class _LoginScreenState extends State<LoginScreen> {
     if (error != null) {
       setState(() => _errorMessage = error);
     } else {
-      context.go('/home');
+      final completedWelcome =
+          await session.currentAccountHasCompletedWelcome();
+      if (!mounted) return;
+      context.go(completedWelcome ? '/home' : '/welcome');
     }
   }
 

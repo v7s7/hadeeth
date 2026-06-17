@@ -7,7 +7,7 @@ class CharacterOption {
   final UserGender gender;
   final String labelAr;
 
-  /// المستوى المطلوب لفتح هذه الشخصية (1 = مجانية دائمًا).
+  /// كان يُستخدم سابقًا للفتح بالمستوى؛ الشخصيات الآن اختيارية كلها من البداية.
   final int unlockLevel;
 
   const CharacterOption({
@@ -18,14 +18,14 @@ class CharacterOption {
     this.unlockLevel = 1,
   });
 
-  bool isUnlockedAt(int level) => level >= unlockLevel;
+  bool isUnlockedAt(int level) => true;
 }
 
 /// جميع الشخصيات المتاحة في التطبيق — ثلاثة للذكور وثلاثة للإناث.
 class AppCharacters {
   // ── ذكور ──────────────────────────────────────────────────────────────────
 
-  // Level 1 — free from the start
+  // Available from the start
   static const male1 = CharacterOption(
     id: 'male_ghutra_blue',
     assetPath: 'assets/images/character/male_ghutra_blue.png',
@@ -34,27 +34,27 @@ class AppCharacters {
     unlockLevel: 1,
   );
 
-  // Level 3 unlock
+  // Available from the start
   static const male2 = CharacterOption(
     id: 'male_bisht_gold',
     assetPath: 'assets/images/character/male_bisht_gold.png',
     gender: UserGender.male,
     labelAr: 'البشت الذهبي',
-    unlockLevel: 3,
+    unlockLevel: 1,
   );
 
-  // Level 7 unlock
+  // Available from the start
   static const male3 = CharacterOption(
     id: 'male_shmagh_red',
     assetPath: 'assets/images/character/male_shmagh_red.png',
     gender: UserGender.male,
     labelAr: 'الشماغ الأحمر',
-    unlockLevel: 7,
+    unlockLevel: 1,
   );
 
   // ── إناث ──────────────────────────────────────────────────────────────────
 
-  // Level 1 — free from the start
+  // Available from the start
   static const female1 = CharacterOption(
     id: 'female_hijab_pink',
     assetPath: 'assets/images/character/female_hijab_pink.png',
@@ -63,22 +63,22 @@ class AppCharacters {
     unlockLevel: 1,
   );
 
-  // Level 3 unlock
+  // Available from the start
   static const female2 = CharacterOption(
     id: 'female_niqab',
     assetPath: 'assets/images/character/female_niqab.png',
     gender: UserGender.female,
     labelAr: 'النقاب',
-    unlockLevel: 3,
+    unlockLevel: 1,
   );
 
-  // Level 7 unlock
+  // Available from the start
   static const female3 = CharacterOption(
     id: 'female_hijab_teal',
     assetPath: 'assets/images/character/female_hijab_teal.png',
     gender: UserGender.female,
     labelAr: 'الزي المطرز',
-    unlockLevel: 7,
+    unlockLevel: 1,
   );
 
   // ── قوائم ─────────────────────────────────────────────────────────────────
@@ -89,20 +89,18 @@ class AppCharacters {
   static List<CharacterOption> forGender(UserGender gender) =>
       gender == UserGender.male ? males : females;
 
-  /// الشخصية الافتراضية لكل جنس (المستوى 1، مجانية دائمًا).
+  /// الشخصية الافتراضية لكل جنس.
   static CharacterOption defaultFor(UserGender gender) =>
       gender == UserGender.male ? male1 : female1;
 
-  /// جميع الشخصيات المفتوحة لمستوى معين وجنس معين.
+  /// جميع الشخصيات متاحة للاختيار بغض النظر عن المستوى.
   static List<CharacterOption> unlockedFor(UserGender gender, int level) =>
       forGender(gender).where((c) => c.isUnlockedAt(level)).toList();
 
-  /// الشخصيات التي تُفتح عند الانتقال من [fromLevel] إلى [toLevel].
+  /// لم تعد الشخصيات مرتبطة بالمستوى.
   static List<CharacterOption> newlyUnlocked(
           UserGender gender, int fromLevel, int toLevel) =>
-      forGender(gender)
-          .where((c) => c.unlockLevel > fromLevel && c.unlockLevel <= toLevel)
-          .toList();
+      const [];
 
   /// البحث عن شخصية بمعرّفها — null إن لم توجد.
   static CharacterOption? findById(String? id) {
