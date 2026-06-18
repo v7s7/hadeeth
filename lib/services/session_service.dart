@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:meta/meta.dart';
 
 import '../models/app_user.dart';
 import '../models/user_gender.dart';
@@ -110,6 +111,13 @@ class SessionService extends ChangeNotifier {
 
   /// حالة تحميل عمليات تسجيل الدخول/إنشاء الحساب.
   bool get isLoading => _isLoading;
+
+  /// للاختبارات فقط: يضبط الملف الشخصي مباشرة دون المرور بـ Firebase.
+  @visibleForTesting
+  void debugSetProfile(AppUser? profile) {
+    _profile = profile;
+    notifyListeners();
+  }
 
   /// تسجيل الدخول بالبريد الإلكتروني وكلمة المرور.
   ///
