@@ -690,7 +690,7 @@ class _AccessoryPickerCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             SizedBox(
-              height: 118,
+              height: 134,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 reverse: true,
