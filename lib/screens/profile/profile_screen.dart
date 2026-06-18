@@ -15,6 +15,7 @@ import '../../widgets/app_feedback.dart';
 import '../../widgets/character_avatar.dart';
 import '../../widgets/guest_banner.dart';
 import '../../widgets/streak_badge.dart';
+import '../../widgets/xp_toast.dart';
 
 /// شاشة حسابي: بيانات المستخدم، ملخص التقدم، الإعدادات، ومعلومات التطبيق.
 class ProfileScreen extends StatefulWidget {
@@ -129,7 +130,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final success = await progressService.buyStreakFreeze();
     if (!mounted) return;
     if (success) {
-      AppFeedback.showSuccess(context, 'تم شراء تجميد السلسلة ✓');
+      showXpToast(
+        context,
+        amount: ProgressService.streakFreezeXpCost,
+        isGain: false,
+        caption: 'تجميد السلسلة ✓',
+      );
     } else {
       AppFeedback.showError(
         context,

@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/app_accessory.dart';
+import '../../models/app_characters.dart';
 import '../../models/hadith.dart';
 import '../../models/quiz_question.dart';
 import '../../services/hadith_repository.dart';
+import '../../services/local_storage_service.dart';
 import '../../services/progress_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/completion_overlay.dart';
 import '../../widgets/empty_state.dart';
 
 /// شاشة الاختبار: ثلاثة أسئلة اختيار من متعدد لكل حديث، مع عرض الإجابة
@@ -57,10 +61,43 @@ class _QuizScreenState extends State<QuizScreen> {
 
     setState(() => _isSubmitting = true);
     final progressService = context.read<ProgressService>();
+    final levelBefore = progressService.currentLevel.level;
     final xpGained = await progressService.completeQuiz(
       correct: _correctCount,
       total: questions.length,
     );
+
+    if (!mounted) return;
+
+    if (xpGained > 0) {
+      final totalXpAfter = progressService.progress.totalXp;
+      final levelAfter = progressService.currentLevel.level;
+      final newStreak = progressService.progress.currentStreak;
+
+      final charId = LocalStorageService.cachedCharacterId ??
+          await LocalStorageService().loadCharacterId();
+      final character = AppCharacters.findById(charId);
+
+      final accessoryId = LocalStorageService.cachedActiveAccessoryId ??
+          await LocalStorageService().loadActiveAccessoryId();
+      final accessory = AppAccessories.findById(accessoryId);
+
+      if (!mounted) return;
+
+      final isPerfect = _correctCount == questions.length;
+      await showCompletionOverlay(
+        context: context,
+        xpGained: xpGained,
+        newStreak: newStreak,
+        totalXpAfter: totalXpAfter,
+        levelBefore: levelBefore,
+        levelAfter: levelAfter,
+        character: character,
+        accessory: accessory,
+        title: isPerfect ? 'إجابة كاملة!' : 'أحسنتَ!',
+        subtitle: '$_correctCount من ${questions.length} إجابات صحيحة',
+      );
+    }
 
     if (!mounted) return;
     setState(() {

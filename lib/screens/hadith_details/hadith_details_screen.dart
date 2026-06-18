@@ -16,6 +16,7 @@ import '../../theme/app_text_styles.dart';
 import '../../widgets/abandoned_badge.dart';
 import '../../widgets/completion_overlay.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/xp_toast.dart';
 
 /// شاشة تفاصيل الحديث: النص الكامل، الراوي، المصدر، الشرح، الفوائد،
 /// الكلمات الغريبة، وأزرار الحفظ والتعلم والمشاركة والاختبار.
@@ -49,8 +50,7 @@ class _HadithDetailsScreenState extends State<HadithDetailsScreen> {
 
     if (xpGained > 0 && mounted) {
       final boost = progressService.streakMultiplierLabel;
-      final label = boost.isEmpty ? '+$xpGained XP' : '+$xpGained XP  $boost';
-      _showSnackBar(label);
+      showXpToast(context, amount: xpGained, caption: boost.isEmpty ? null : boost);
     }
   }
 

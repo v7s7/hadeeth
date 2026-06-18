@@ -31,6 +31,8 @@ Future<void> showCompletionOverlay({
   required int levelAfter,
   CharacterOption? character,
   AppAccessory? accessory,
+  String title = 'أحسنتَ!',
+  String subtitle = 'تعلّمت حديثًا جديدًا وحفظته',
 }) {
   return showGeneralDialog<void>(
     context: context,
@@ -47,6 +49,8 @@ Future<void> showCompletionOverlay({
       levelAfter: levelAfter,
       character: character,
       accessory: accessory,
+      title: title,
+      subtitle: subtitle,
     ),
   );
 }
@@ -61,6 +65,8 @@ class _CompletionOverlay extends StatefulWidget {
   final int levelAfter;
   final CharacterOption? character;
   final AppAccessory? accessory;
+  final String title;
+  final String subtitle;
 
   const _CompletionOverlay({
     required this.xpGained,
@@ -70,6 +76,8 @@ class _CompletionOverlay extends StatefulWidget {
     required this.levelAfter,
     required this.character,
     required this.accessory,
+    required this.title,
+    required this.subtitle,
   });
 
   @override
@@ -373,7 +381,7 @@ class _CompletionOverlayState extends State<_CompletionOverlay>
           children: [
             // Title
             Text(
-              'أحسنتَ!',
+              widget.title,
               style: GoogleFonts.tajawal(
                   fontSize: 30,
                   fontWeight: FontWeight.w900,
@@ -384,10 +392,11 @@ class _CompletionOverlayState extends State<_CompletionOverlay>
             ),
             const SizedBox(height: 6),
             Text(
-              'تعلّمت حديثًا جديدًا وحفظته',
+              widget.subtitle,
               style: GoogleFonts.tajawal(
                   fontSize: 14, color: Colors.white.withOpacity(0.5)),
               textAlign: TextAlign.center,
+              textDirection: TextDirection.rtl,
             ),
 
             const SizedBox(height: 20),
