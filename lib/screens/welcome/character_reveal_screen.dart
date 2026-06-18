@@ -217,7 +217,7 @@ class _CharacterRevealScreenState extends State<CharacterRevealScreen>
                     Text(
                       _character == null
                           ? 'اختر الشخصية التي تحبها وابدأ رحلتك'
-                          : '${_character!.labelAr} سترافقك في القراءة والتذكير اليومي',
+                          : 'رفيقك في القراءة والتذكير اليومي',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.6),
