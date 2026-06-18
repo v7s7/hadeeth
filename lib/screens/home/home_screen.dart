@@ -432,7 +432,8 @@ class _AccessoryPill extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(accessory.imagePath, width: 26, height: 26),
+            Image.asset(accessory.imagePath,
+                width: 26, height: 26, fit: BoxFit.contain),
             const SizedBox(height: 3),
             Container(
               width: 18,

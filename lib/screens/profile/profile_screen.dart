@@ -762,7 +762,8 @@ class _AccessoryOption extends StatelessWidget {
             children: [
               Opacity(
                 opacity: unlocked ? 1 : 0.36,
-                child: Image.asset(accessory.imagePath, width: 36, height: 36),
+                child: Image.asset(accessory.imagePath,
+                    width: 36, height: 36, fit: BoxFit.contain),
               ),
               const SizedBox(height: 6),
               Text(
