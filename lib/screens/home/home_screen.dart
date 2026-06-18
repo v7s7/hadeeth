@@ -231,7 +231,7 @@ class _CharacterGreetingCardState extends State<_CharacterGreetingCard> {
     if (instant != null) {
       _gender = instant;
     }
-    _preferredName = widget.session.displayName ??
+    _preferredName = widget.session.preferredName ??
         LocalStorageService.cachedPreferredName;
     _loadData();
   }
@@ -242,7 +242,7 @@ class _CharacterGreetingCardState extends State<_CharacterGreetingCard> {
     if (widget.session.gender != oldWidget.session.gender ||
         widget.session.characterId != oldWidget.session.characterId ||
         widget.session.activeAccessoryId != oldWidget.session.activeAccessoryId ||
-        widget.session.displayName != oldWidget.session.displayName) {
+        widget.session.preferredName != oldWidget.session.preferredName) {
       setState(() {
         if (widget.session.gender != null) _gender = widget.session.gender;
         _character = AppCharacters.findById(widget.session.characterId) ??
@@ -251,7 +251,7 @@ class _CharacterGreetingCardState extends State<_CharacterGreetingCard> {
               widget.session.activeAccessoryId,
             ) ??
             _accessory;
-        _preferredName = widget.session.displayName ?? _preferredName;
+        _preferredName = widget.session.preferredName ?? _preferredName;
       });
     }
   }
@@ -265,7 +265,7 @@ class _CharacterGreetingCardState extends State<_CharacterGreetingCard> {
     final accessoryId = widget.session.activeAccessoryId ??
         LocalStorageService.cachedActiveAccessoryId ??
         await storage.loadActiveAccessoryId();
-    final name = widget.session.displayName ??
+    final name = widget.session.preferredName ??
         LocalStorageService.cachedPreferredName ??
         await storage.loadPreferredName();
     final char = AppCharacters.findById(id) ??

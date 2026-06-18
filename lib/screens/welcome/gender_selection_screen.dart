@@ -34,7 +34,7 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen>
   void initState() {
     super.initState();
     final session = context.read<SessionService>();
-    final sessionName = session.displayName;
+    final sessionName = session.preferredName;
     final localName = LocalStorageService.cachedPreferredName;
     _nameController.text = sessionName ?? localName ?? '';
     _selectedGender = session.gender ?? LocalStorageService.cachedGender;

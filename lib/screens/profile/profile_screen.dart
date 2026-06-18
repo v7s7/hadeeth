@@ -60,7 +60,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String? _notificationName() {
     final session = context.read<SessionService>();
-    return session.displayName ?? LocalStorageService.cachedPreferredName;
+    return session.preferredName ?? LocalStorageService.cachedPreferredName;
   }
 
   Future<void> _toggleNotifications(bool value) async {
@@ -583,7 +583,7 @@ class _ProfileHeader extends StatelessWidget {
     final localName = LocalStorageService.cachedPreferredName;
     final name = session.isGuest
         ? (localName == null || localName.isEmpty ? 'زائر' : localName)
-        : (session.displayName ?? localName ?? 'مستخدم');
+        : (session.preferredName ?? localName ?? 'مستخدم');
     return Row(
       children: [
         CircleAvatar(

@@ -100,6 +100,14 @@ class SessionService extends ChangeNotifier {
     return _user?.email;
   }
 
+  /// الاسم المفضّل كما اختاره المستخدم فعليًا فقط — بدون أي قيمة احتياطية
+  /// من البريد الإلكتروني. يُستخدم في حقول الاسم والترحيب الشخصي حتى لا
+  /// يظهر البريد الإلكتروني بالخطأ كاسم.
+  String? get preferredName {
+    final name = _profile?.displayName;
+    return (name != null && name.isNotEmpty) ? name : null;
+  }
+
   /// هل المستخدم الحالي مشرف محتوى.
   bool get isAdmin => _profile?.role == UserRole.admin;
 
