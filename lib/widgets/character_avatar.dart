@@ -49,10 +49,19 @@ class CharacterAvatar extends StatelessWidget {
     );
   }
 
-  /// Maps the placement's fractional anchor (relative to the 512x512
-  /// character artwork) to an exact pixel position inside the avatar box.
-  /// The character is square and rendered with [BoxFit.contain], so its
-  /// visible side equals the smaller of the box's two dimensions.
+  /// Maps the placement's anchor to an exact pixel position inside the
+  /// avatar box. The character is square and rendered with [BoxFit.contain],
+  /// so its visible side equals the smaller of the box's two dimensions.
+  ///
+  /// Hand-held categories target that specific character's measured hand
+  /// position ([_handsByCharacter]) instead of one fixed point shared by
+  /// every character — poses and sleeve styles differ enough between
+  /// characters that a single global point drifts off the hand for most of
+  /// them. [_AccessoryPlacement.anchorDx]/[anchorDy] then say where the
+  /// "grip" sits within the accessory's own artwork (e.g. the misbah's neck
+  /// where the tassel meets the loop, the lantern's top ring, the
+  /// umbrella's handle hook) so that point — not the artwork's bounding-box
+  /// center — lands on the hand.
   Widget _accessoryLayer(
     _AccessoryPlacement placement,
     double boxWidth,
@@ -62,16 +71,25 @@ class CharacterAvatar extends StatelessWidget {
     final horizontalInset = (boxWidth - squareSide) / 2;
     final verticalInset = (boxHeight - squareSide) / 2;
     final size = squareSide * placement.scale;
-    final centerX = horizontalInset + placement.dx * squareSide;
-    final centerY = verticalInset + placement.dy * squareSide;
+
+    final target = placement.hand == null
+        ? Offset(placement.dx, placement.dy)
+        : _handPointFor(character.id, placement.hand!);
+    final targetX = horizontalInset + target.dx * squareSide;
+    final targetY = verticalInset + target.dy * squareSide;
 
     return Positioned(
-      left: centerX - size / 2,
-      top: centerY - size / 2,
+      left: targetX - placement.anchorDx * size,
+      top: targetY - placement.anchorDy * size,
       width: size,
       height: size,
       child: Image.asset(accessory!.imagePath, fit: BoxFit.contain),
     );
+  }
+
+  static Offset _handPointFor(String characterId, _Hand hand) {
+    final hands = _handsByCharacter[characterId] ?? _defaultHands;
+    return hand == _Hand.left ? hands.left : hands.right;
   }
 
   static const Map<AccessoryCategory, _AccessoryPlacement> _placements = {
@@ -82,21 +100,24 @@ class CharacterAvatar extends StatelessWidget {
       behindCharacter: true,
     ),
     AccessoryCategory.misbah: _AccessoryPlacement(
-      dx: 0.70,
-      dy: 0.62,
+      hand: _Hand.left,
       scale: 0.24,
+      anchorDx: 0.64,
+      anchorDy: 0.79,
       behindCharacter: false,
     ),
     AccessoryCategory.umbrella: _AccessoryPlacement(
-      dx: 0.76,
-      dy: 0.32,
+      hand: _Hand.left,
       scale: 0.58,
+      anchorDx: 0.28,
+      anchorDy: 0.93,
       behindCharacter: false,
     ),
     AccessoryCategory.lantern: _AccessoryPlacement(
-      dx: 0.28,
-      dy: 0.66,
+      hand: _Hand.right,
       scale: 0.30,
+      anchorDx: 0.50,
+      anchorDy: 0.06,
       behindCharacter: false,
     ),
     AccessoryCategory.badge: _AccessoryPlacement(
@@ -106,24 +127,87 @@ class CharacterAvatar extends StatelessWidget {
       behindCharacter: false,
     ),
     AccessoryCategory.notebook: _AccessoryPlacement(
-      dx: 0.34,
-      dy: 0.58,
+      hand: _Hand.right,
       scale: 0.30,
       behindCharacter: false,
     ),
   };
+
+  /// Hand positions measured directly from each character's artwork (512x512
+  /// canvas, expressed as a fraction of width/height) by isolating the
+  /// skin-toned blobs below the face. `right`/`left` are the character's own
+  /// right/left hand (mirrored on screen: the character's right hand is the
+  /// left side of the image).
+  static const Map<String, _HandPoints> _handsByCharacter = {
+    'male_ghutra_blue': _HandPoints(
+      right: Offset(0.3609, 0.6533),
+      left: Offset(0.6330, 0.6534),
+    ),
+    'male_bisht_gold': _HandPoints(
+      right: Offset(0.3133, 0.6620),
+      left: Offset(0.6827, 0.6619),
+    ),
+    'male_shmagh_red': _HandPoints(
+      right: Offset(0.2736, 0.6304),
+      left: Offset(0.7230, 0.6303),
+    ),
+    'female_hijab_pink': _HandPoints(
+      right: Offset(0.3596, 0.5917),
+      left: Offset(0.6433, 0.5921),
+    ),
+    'female_niqab': _HandPoints(
+      right: Offset(0.3494, 0.6394),
+      left: Offset(0.6432, 0.6393),
+    ),
+    'female_hijab_teal': _HandPoints(
+      right: Offset(0.3112, 0.6045),
+      left: Offset(0.6863, 0.6046),
+    ),
+  };
+
+  /// Average of the six measured hand points — only used as a fallback if a
+  /// character id isn't found above.
+  static const _defaultHands = _HandPoints(
+    right: Offset(0.3280, 0.6302),
+    left: Offset(0.6686, 0.6303),
+  );
+}
+
+enum _Hand { left, right }
+
+class _HandPoints {
+  final Offset right;
+  final Offset left;
+
+  const _HandPoints({required this.right, required this.left});
 }
 
 class _AccessoryPlacement {
+  /// Fixed target as a fraction of the character box — used by categories
+  /// that aren't hand-held (frame, badge) and so don't vary by character.
   final double dx;
   final double dy;
+
+  /// Which measured hand to target instead of [dx]/[dy]. Null for
+  /// non-hand-held categories.
+  final _Hand? hand;
+
   final double scale;
   final bool behindCharacter;
 
+  /// Where the "grip" point sits within the accessory's own rendered box
+  /// (0.5, 0.5 is dead-center). Defaults to dead-center for items without a
+  /// natural off-center grip (frame, badge, notebook).
+  final double anchorDx;
+  final double anchorDy;
+
   const _AccessoryPlacement({
-    required this.dx,
-    required this.dy,
+    this.dx = 0.5,
+    this.dy = 0.5,
+    this.hand,
     required this.scale,
     required this.behindCharacter,
+    this.anchorDx = 0.5,
+    this.anchorDy = 0.5,
   });
 }
