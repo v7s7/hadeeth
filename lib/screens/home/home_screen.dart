@@ -356,14 +356,13 @@ class _CharacterGreetingCardState extends State<_CharacterGreetingCard> {
                   character: _character!,
                   height: 64,
                   width: 52,
+                  accessory: accessory,
                 ),
               ),
             )
           else
             const SizedBox(width: 52, height: 64),
-          const SizedBox(width: 8),
-          _AccessoryPill(accessory: accessory),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -407,44 +406,6 @@ class _CharacterGreetingCardState extends State<_CharacterGreetingCard> {
           ),
         ],
       ),
-      ),
-    );
-  }
-}
-
-class _AccessoryPill extends StatelessWidget {
-  final AppAccessory accessory;
-
-  const _AccessoryPill({required this.accessory});
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: 'رفيق الشخصية: ${accessory.nameAr}',
-      child: Container(
-        width: 42,
-        height: 58,
-        decoration: BoxDecoration(
-          color: accessory.color.withOpacity(0.16),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: accessory.color.withOpacity(0.35)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(accessory.imagePath,
-                width: 26, height: 26, fit: BoxFit.contain),
-            const SizedBox(height: 3),
-            Container(
-              width: 18,
-              height: 3,
-              decoration: BoxDecoration(
-                color: accessory.color.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

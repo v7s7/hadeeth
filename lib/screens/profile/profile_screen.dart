@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/app_accessory.dart';
+import '../../models/app_characters.dart';
 import '../../models/user_progress.dart';
 import '../../services/font_size_service.dart';
 import '../../services/local_storage_service.dart';
@@ -11,6 +12,7 @@ import '../../services/progress_service.dart';
 import '../../services/session_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/character_avatar.dart';
 import '../../widgets/guest_banner.dart';
 import '../../widgets/streak_badge.dart';
 
@@ -242,6 +244,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   activeAccessoryId:
                       session.activeAccessoryId ?? _activeAccessoryId,
                   progress: progress,
+                  character: AppCharacters.findById(session.characterId) ??
+                      (session.gender != null
+                          ? AppCharacters.defaultFor(session.gender!)
+                          : null),
                   onSelect: (accessory) =>
                       _setActiveAccessory(accessory, session),
                 ),
@@ -651,11 +657,13 @@ class _MenuTile extends StatelessWidget {
 class _AccessoryPickerCard extends StatelessWidget {
   final String? activeAccessoryId;
   final UserProgress progress;
+  final CharacterOption? character;
   final ValueChanged<AppAccessory> onSelect;
 
   const _AccessoryPickerCard({
     required this.activeAccessoryId,
     required this.progress,
+    required this.character,
     required this.onSelect,
   });
 
@@ -683,11 +691,21 @@ class _AccessoryPickerCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'اختر مسباحًا أو لمسة صغيرة تظهر بجانب شخصيتك.',
+              'اختر مسباحًا أو لمسة صغيرة تظهر على شخصيتك.',
               style: AppTextStyles.caption,
               textAlign: TextAlign.right,
               textDirection: TextDirection.rtl,
             ),
+            if (character != null) ...[
+              const SizedBox(height: 12),
+              Center(
+                child: CharacterAvatar(
+                  character: character!,
+                  height: 120,
+                  accessory: active,
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             SizedBox(
               height: 134,

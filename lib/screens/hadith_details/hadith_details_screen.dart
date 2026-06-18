@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../models/hadith.dart';
+import '../../models/app_accessory.dart';
 import '../../models/app_characters.dart';
 import '../../services/category_repository.dart';
 import '../../services/hadith_repository.dart';
@@ -66,10 +67,14 @@ class _HadithDetailsScreenState extends State<HadithDetailsScreen> {
     final levelAfter   = progressService.currentLevel.level;
     final newStreak    = progressService.progress.currentStreak;
 
-    // Load selected character (cached from SharedPreferences)
+    // Load selected character + accessory (cached from SharedPreferences)
     final charId    = LocalStorageService.cachedCharacterId
         ?? await LocalStorageService().loadCharacterId();
     final character = AppCharacters.findById(charId);
+
+    final accessoryId = LocalStorageService.cachedActiveAccessoryId
+        ?? await LocalStorageService().loadActiveAccessoryId();
+    final accessory = AppAccessories.findById(accessoryId);
 
     if (!mounted) return;
 
@@ -81,6 +86,7 @@ class _HadithDetailsScreenState extends State<HadithDetailsScreen> {
       levelBefore: levelBefore,
       levelAfter: levelAfter,
       character: character,
+      accessory: accessory,
     );
   }
 

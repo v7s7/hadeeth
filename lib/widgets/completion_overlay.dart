@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../data/levels_data.dart';
+import '../models/app_accessory.dart';
 import '../models/app_characters.dart';
 import 'character_avatar.dart';
 import '../models/app_level.dart';
@@ -29,6 +30,7 @@ Future<void> showCompletionOverlay({
   required int levelBefore,
   required int levelAfter,
   CharacterOption? character,
+  AppAccessory? accessory,
 }) {
   return showGeneralDialog<void>(
     context: context,
@@ -44,6 +46,7 @@ Future<void> showCompletionOverlay({
       levelBefore: levelBefore,
       levelAfter: levelAfter,
       character: character,
+      accessory: accessory,
     ),
   );
 }
@@ -57,6 +60,7 @@ class _CompletionOverlay extends StatefulWidget {
   final int levelBefore;
   final int levelAfter;
   final CharacterOption? character;
+  final AppAccessory? accessory;
 
   const _CompletionOverlay({
     required this.xpGained,
@@ -65,6 +69,7 @@ class _CompletionOverlay extends StatefulWidget {
     required this.levelBefore,
     required this.levelAfter,
     required this.character,
+    required this.accessory,
   });
 
   @override
@@ -317,7 +322,11 @@ class _CompletionOverlayState extends State<_CompletionOverlay>
                 ),
               ),
               if (widget.character != null)
-                CharacterAvatar(character: widget.character!, height: 140)
+                CharacterAvatar(
+                  character: widget.character!,
+                  height: 140,
+                  accessory: widget.accessory,
+                )
               else
                 const SizedBox(height: 140, width: 100),
             ],
