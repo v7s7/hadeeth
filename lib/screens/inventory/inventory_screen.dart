@@ -76,6 +76,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         .toList(),
                     activeId: active.id,
                     progress: progress,
+                    unlockAll: session.isSuperAdmin,
                     onSelect: (accessory) => _select(accessory, session),
                   ),
               ],
@@ -136,6 +137,7 @@ class _CategorySection extends StatelessWidget {
   final List<AppAccessory> items;
   final String activeId;
   final UserProgress progress;
+  final bool unlockAll;
   final ValueChanged<AppAccessory> onSelect;
 
   const _CategorySection({
@@ -143,6 +145,7 @@ class _CategorySection extends StatelessWidget {
     required this.items,
     required this.activeId,
     required this.progress,
+    required this.unlockAll,
     required this.onSelect,
   });
 
@@ -176,13 +179,13 @@ class _CategorySection extends StatelessWidget {
             itemCount: items.length,
             itemBuilder: (context, index) {
               final accessory = items[index];
-              final unlocked = accessory.isUnlocked(progress);
+              final unlocked = unlockAll || accessory.isUnlocked(progress);
               final selected = accessory.id == activeId;
               return AccessoryTile(
                 accessory: accessory,
                 selected: selected,
                 unlocked: unlocked,
-                hint: accessory.unlockHint(progress),
+                hint: unlockAll ? 'متاح الآن' : accessory.unlockHint(progress),
                 onTap: unlocked ? () => onSelect(accessory) : null,
               );
             },
