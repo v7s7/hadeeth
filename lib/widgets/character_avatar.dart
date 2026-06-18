@@ -58,10 +58,12 @@ class CharacterAvatar extends StatelessWidget {
   /// every character — poses and sleeve styles differ enough between
   /// characters that a single global point drifts off the hand for most of
   /// them. [_AccessoryPlacement.anchorDx]/[anchorDy] then say where the
-  /// "grip" sits within the accessory's own artwork (e.g. the misbah's neck
-  /// where the tassel meets the loop, the lantern's top ring, the
-  /// umbrella's handle hook) so that point — not the artwork's bounding-box
-  /// center — lands on the hand.
+  /// "grip" sits within the accessory's own artwork (e.g. the top of the
+  /// misbah's loop, the lantern's top ring, the umbrella's handle hook) so
+  /// that point — not the artwork's bounding-box center — lands on the
+  /// hand. [_anchorOverrides] refines this per accessory id for cases like
+  /// the misbah variants, whose loops are each drawn at a different
+  /// rotation and so each need their own measured grip point.
   Widget _accessoryLayer(
     _AccessoryPlacement placement,
     double boxWidth,
@@ -78,9 +80,12 @@ class CharacterAvatar extends StatelessWidget {
     final targetX = horizontalInset + target.dx * squareSide;
     final targetY = verticalInset + target.dy * squareSide;
 
+    final anchor = _anchorOverrides[accessory!.id] ??
+        Offset(placement.anchorDx, placement.anchorDy);
+
     return Positioned(
-      left: targetX - placement.anchorDx * size,
-      top: targetY - placement.anchorDy * size,
+      left: targetX - anchor.dx * size,
+      top: targetY - anchor.dy * size,
       width: size,
       height: size,
       child: Image.asset(accessory!.imagePath, fit: BoxFit.contain),
@@ -102,8 +107,8 @@ class CharacterAvatar extends StatelessWidget {
     AccessoryCategory.misbah: _AccessoryPlacement(
       hand: _Hand.left,
       scale: 0.24,
-      anchorDx: 0.64,
-      anchorDy: 0.79,
+      anchorDx: 0.513,
+      anchorDy: 0.034,
       behindCharacter: false,
     ),
     AccessoryCategory.umbrella: _AccessoryPlacement(
@@ -131,6 +136,18 @@ class CharacterAvatar extends StatelessWidget {
       scale: 0.30,
       behindCharacter: false,
     ),
+  };
+
+  /// Per-accessory-id grip point, overriding the category default in
+  /// [_placements]. The three misbah pieces are drawn as a loop at a
+  /// different rotation each, so a single shared anchor lands on the top
+  /// bead for one and drifts off it for the others — each variant's loop
+  /// apex was measured individually instead (fraction of the accessory's
+  /// own image box, letterbox-corrected the same way as [_handsByCharacter]).
+  static const Map<String, Offset> _anchorOverrides = {
+    'misbah_amber': Offset(0.5205, 0.0161),
+    'misbah_wood': Offset(0.4350, 0.0689),
+    'misbah_black': Offset(0.5831, 0.0163),
   };
 
   /// Hand positions measured directly from each character's artwork (512x512
