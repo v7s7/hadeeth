@@ -15,6 +15,7 @@ import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/categories/category_hadiths_screen.dart';
 import '../screens/hadith_details/hadith_details_screen.dart';
+import '../screens/inventory/inventory_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
 import '../screens/progress/progress_screen.dart';
 import '../screens/quiz/quiz_screen.dart';
@@ -108,6 +109,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/progress',
       builder: (context, state) => const ProgressScreen(),
+    ),
+    GoRoute(
+      path: '/inventory',
+      builder: (context, state) => const InventoryScreen(),
     ),
 
     // ── لوحة التحكم ─────────────────────────────────────────────

@@ -27,6 +27,23 @@ enum AccessoryCategory {
         return 'دفتر';
     }
   }
+
+  IconData get icon {
+    switch (this) {
+      case AccessoryCategory.misbah:
+        return Icons.fiber_manual_record_outlined;
+      case AccessoryCategory.umbrella:
+        return Icons.beach_access_outlined;
+      case AccessoryCategory.frame:
+        return Icons.photo_size_select_actual_outlined;
+      case AccessoryCategory.badge:
+        return Icons.workspace_premium_outlined;
+      case AccessoryCategory.lantern:
+        return Icons.light_outlined;
+      case AccessoryCategory.notebook:
+        return Icons.menu_book_outlined;
+    }
+  }
 }
 
 class AppAccessory {

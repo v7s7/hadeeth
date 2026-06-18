@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 
 import '../../models/app_accessory.dart';
 import '../../models/app_characters.dart';
-import '../../models/user_progress.dart';
 import '../../services/font_size_service.dart';
 import '../../services/local_storage_service.dart';
 import '../../services/notification_service.dart';
@@ -127,15 +126,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await _storage.setDailyGoal(goal);
   }
 
-  Future<void> _setActiveAccessory(
-    AppAccessory accessory,
-    SessionService session,
-  ) async {
-    setState(() => _activeAccessoryId = accessory.id);
-    await _storage.saveActiveAccessoryId(accessory.id);
-    await session.saveActiveAccessory(accessory.id);
-  }
-
   Future<void> _buyStreakFreeze(ProgressService progressService) async {
     final success = await progressService.buyStreakFreeze();
     if (!mounted) return;
@@ -243,13 +233,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _AccessoryPickerCard(
                   activeAccessoryId:
                       session.activeAccessoryId ?? _activeAccessoryId,
-                  progress: progress,
                   character: AppCharacters.findById(session.characterId) ??
                       (session.gender != null
                           ? AppCharacters.defaultFor(session.gender!)
                           : null),
-                  onSelect: (accessory) =>
-                      _setActiveAccessory(accessory, session),
+                  onOpenInventory: () => context.push('/inventory'),
                 ),
                 if (session.isAnyAdmin)
                   _MenuTile(
@@ -656,15 +644,13 @@ class _MenuTile extends StatelessWidget {
 
 class _AccessoryPickerCard extends StatelessWidget {
   final String? activeAccessoryId;
-  final UserProgress progress;
   final CharacterOption? character;
-  final ValueChanged<AppAccessory> onSelect;
+  final VoidCallback onOpenInventory;
 
   const _AccessoryPickerCard({
     required this.activeAccessoryId,
-    required this.progress,
     required this.character,
-    required this.onSelect,
+    required this.onOpenInventory,
   });
 
   @override
@@ -674,136 +660,48 @@ class _AccessoryPickerCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Row(
-              textDirection: TextDirection.rtl,
-              children: [
-                Icon(Icons.auto_awesome, color: active.color, size: 22),
-                const SizedBox(width: 10),
-                Text('رفيق الشخصية', style: AppTextStyles.bodyBold),
-                const Spacer(),
-                Text(active.nameAr, style: AppTextStyles.caption),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'اختر مسباحًا أو لمسة صغيرة تظهر على شخصيتك.',
-              style: AppTextStyles.caption,
-              textAlign: TextAlign.right,
-              textDirection: TextDirection.rtl,
-            ),
-            if (character != null) ...[
-              const SizedBox(height: 12),
-              Center(
-                child: CharacterAvatar(
-                  character: character!,
-                  height: 120,
-                  accessory: active,
-                ),
-              ),
-            ],
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 134,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                reverse: true,
-                itemBuilder: (context, index) {
-                  final accessory = AppAccessories.all[index];
-                  final unlocked = accessory.isUnlocked(progress);
-                  final selected = active.id == accessory.id;
-                  return _AccessoryOption(
-                    accessory: accessory,
-                    selected: selected,
-                    unlocked: unlocked,
-                    hint: accessory.unlockHint(progress),
-                    onTap: unlocked ? () => onSelect(accessory) : null,
-                  );
-                },
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
-                itemCount: AppAccessories.all.length,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AccessoryOption extends StatelessWidget {
-  final AppAccessory accessory;
-  final bool selected;
-  final bool unlocked;
-  final String hint;
-  final VoidCallback? onTap;
-
-  const _AccessoryOption({
-    required this.accessory,
-    required this.selected,
-    required this.unlocked,
-    required this.hint,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = unlocked ? accessory.color : AppColors.textMuted;
-
-    return Semantics(
-      button: unlocked,
-      selected: selected,
-      label: '${accessory.nameAr}، $hint',
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width: 104,
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: selected
-                ? color.withOpacity(0.18)
-                : color.withOpacity(unlocked ? 0.08 : 0.04),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: selected ? color : color.withOpacity(0.22),
-              width: selected ? 1.4 : 1,
-            ),
-          ),
+        borderRadius: BorderRadius.circular(16),
+        onTap: onOpenInventory,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Opacity(
-                opacity: unlocked ? 1 : 0.36,
-                child: Image.asset(accessory.imagePath,
-                    width: 36, height: 36, fit: BoxFit.contain),
+              Row(
+                textDirection: TextDirection.rtl,
+                children: [
+                  Icon(Icons.auto_awesome, color: active.color, size: 22),
+                  const SizedBox(width: 10),
+                  Text('رفيق الشخصية', style: AppTextStyles.bodyBold),
+                  const Spacer(),
+                  Text(active.nameAr, style: AppTextStyles.caption),
+                ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                accessory.nameAr,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: AppTextStyles.caption.copyWith(
-                  color: unlocked ? AppColors.textPrimary : AppColors.textMuted,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              const SizedBox(height: 12),
+              if (character != null)
+                Center(
+                  child: CharacterAvatar(
+                    character: character!,
+                    height: 120,
+                    accessory: active,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                selected ? 'مختار' : hint,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: AppTextStyles.caption.copyWith(
-                  color: selected ? color : AppColors.textMuted,
-                  fontSize: 10,
-                ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.backpack_outlined,
+                      color: AppColors.primary, size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    'فتح خزانة الشخصية',
+                    style: AppTextStyles.bodyBold
+                        .copyWith(color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_left, color: AppColors.primary),
+                ],
               ),
             ],
           ),
