@@ -19,6 +19,7 @@ import '../../widgets/abandoned_badge.dart';
 import '../../widgets/daily_goal_card.dart';
 import '../../widgets/guest_banner.dart';
 import '../../widgets/hadith_card.dart';
+import '../../widgets/save_progress_dialog.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/streak_badge.dart';
 import '../../widgets/xp_progress_bar.dart';
@@ -91,8 +92,9 @@ class HomeScreen extends StatelessWidget {
             return ListView(
               padding: EdgeInsets.fromLTRB(side + 16, 16, side + 16, 16),
               children: [
+                SignupNudge(isGuest: session.isGuest, progress: progress),
                 if (session.isGuest) ...[
-                  const GuestBanner(),
+                  GuestBanner(onTap: () => context.push('/register')),
                   const SizedBox(height: 16),
                 ],
 

@@ -11,6 +11,7 @@ import '../../services/progress_service.dart';
 import '../../services/session_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/app_feedback.dart';
 import '../../widgets/character_avatar.dart';
 import '../../widgets/guest_banner.dart';
 import '../../widgets/streak_badge.dart';
@@ -67,10 +68,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final granted = await NotificationService.requestPermission();
       if (!granted) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('يرجى السماح بالإشعارات من إعدادات الجهاز')),
-        );
+        AppFeedback.showError(
+            context, 'يرجى السماح بالإشعارات من إعدادات الجهاز');
         return;
       }
       await NotificationService.scheduleDailyReminder(
@@ -129,13 +128,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _buyStreakFreeze(ProgressService progressService) async {
     final success = await progressService.buyStreakFreeze();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(success
-            ? 'تم شراء تجميد السلسلة ✓'
-            : 'نقاطك غير كافية — تحتاج ${ProgressService.streakFreezeXpCost} XP'),
+    if (success) {
+      AppFeedback.showSuccess(context, 'تم شراء تجميد السلسلة ✓');
+    } else {
+      AppFeedback.showError(
+        context,
+        'نقاطك غير كافية — تحتاج ${ProgressService.streakFreezeXpCost} XP',
+      );
+    }
+  }
+
+  Future<void> _confirmSignOut(SessionService session) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('تسجيل الخروج؟'),
+        content: const Text('هل تريد تسجيل الخروج من حسابك؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('تسجيل الخروج', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
       ),
     );
+    if (confirmed != true) return;
+    await session.signOut();
+    if (!mounted) return;
+    AppFeedback.showSuccess(context, 'تم تسجيل الخروج بنجاح');
   }
 
   void _showInfoSheet(BuildContext context, String title, String body) {
@@ -168,9 +192,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _ProfileHeader(session: session),
                 const SizedBox(height: 16),
                 if (session.isGuest) ...[
-                  const GuestBanner(
+                  GuestBanner(
                     message:
                         'سجّل دخولك لحفظ تقدمك على جميع أجهزتك ومزامنة سلسلتك اليومية.',
+                    onTap: () => context.push('/login'),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
@@ -535,7 +560,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.logout,
                     title: 'تسجيل الخروج',
                     titleColor: AppColors.error,
-                    onTap: () => session.signOut(),
+                    onTap: () => _confirmSignOut(session),
                   ),
               ],
             );

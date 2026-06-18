@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/progress_service.dart';
@@ -36,8 +37,9 @@ class ProgressScreen extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           children: [
             if (session.isGuest) ...[
-              const GuestBanner(
+              GuestBanner(
                 message: 'سجّل دخولك لحفظ تقدمك ومزامنته بين أجهزتك.',
+                onTap: () => context.push('/register'),
               ),
               const SizedBox(height: 16),
             ],

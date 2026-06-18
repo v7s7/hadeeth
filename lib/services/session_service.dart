@@ -185,6 +185,20 @@ class SessionService extends ChangeNotifier {
     }
   }
 
+  /// يرسل رابط إعادة تعيين كلمة المرور إلى البريد الإلكتروني المحدد.
+  ///
+  /// تُعيد رسالة خطأ بالعربية عند الفشل، أو null عند النجاح.
+  Future<String?> sendPasswordResetEmail(String email) async {
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email.trim());
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return _authErrorMessage(e);
+    } catch (_) {
+      return 'تعذّر إرسال رابط إعادة التعيين. تأكد من اتصالك بالإنترنت.';
+    }
+  }
+
   Future<bool> currentAccountHasCompletedWelcome() async {
     final user = _user ?? FirebaseAuth.instance.currentUser;
     if (user == null) return false;

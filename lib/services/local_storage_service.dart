@@ -14,6 +14,7 @@ import '../models/user_progress.dart';
 class LocalStorageService {
   static const String _progressKey = 'user_progress_v1';
   static const String _onboardingKey = 'onboarding_complete';
+  static const String _signupPromptShownKey = 'signup_prompt_shown';
   static const String _welcomeKey = 'welcome_complete';
   static const String _genderKey = 'user_gender';
   static const String _notifEnabledKey = 'notifications_enabled';
@@ -105,6 +106,17 @@ class LocalStorageService {
   Future<void> markOnboardingComplete() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_onboardingKey, true);
+  }
+
+  /// هل سبق أن عُرضت دعوة إنشاء الحساب على هذا الجهاز — تُعرض مرة واحدة فقط.
+  Future<bool> hasSeenSignupPrompt() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_signupPromptShownKey) ?? false;
+  }
+
+  Future<void> markSignupPromptSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_signupPromptShownKey, true);
   }
 
   // ────────────────────────── Welcome / Gender ──────────────────────────
