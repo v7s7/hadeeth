@@ -31,6 +31,7 @@ class _CharacterRevealScreenState extends State<CharacterRevealScreen>
   late Animation<Offset> _textSlide;
 
   bool _ready = false;
+  bool _finishing = false;
 
   @override
   void initState() {
@@ -91,18 +92,24 @@ class _CharacterRevealScreenState extends State<CharacterRevealScreen>
   }
 
   Future<void> _finish() async {
-    final session = context.read<SessionService>();
-    await LocalStorageService().markWelcomeComplete();
-    final characterId =
-        _character?.id ?? AppCharacters.defaultFor(_gender).id;
-    await session.savePersonalization(
-          gender: _gender,
-          characterId: characterId,
-          preferredName: _preferredName ?? '',
-          completedWelcome: true,
-        );
-    if (!mounted) return;
-    context.go('/home');
+    if (_finishing) return;
+    setState(() => _finishing = true);
+    try {
+      final session = context.read<SessionService>();
+      await LocalStorageService().markWelcomeComplete();
+      final characterId =
+          _character?.id ?? AppCharacters.defaultFor(_gender).id;
+      await session.savePersonalization(
+            gender: _gender,
+            characterId: characterId,
+            preferredName: _preferredName ?? '',
+            completedWelcome: true,
+          );
+      if (!mounted) return;
+      context.go('/home');
+    } catch (_) {
+      if (mounted) setState(() => _finishing = false);
+    }
   }
 
   @override
@@ -269,7 +276,8 @@ class _CharacterRevealScreenState extends State<CharacterRevealScreen>
                   padding: const EdgeInsets.fromLTRB(32, 0, 32, 40),
                   child: _StartButton(
                     gender: _gender,
-                    onTap: _finish,
+                    onTap: _finishing ? null : _finish,
+                    loading: _finishing,
                   ),
                 ),
               ),
@@ -316,9 +324,14 @@ class _WelcomeStepIndicator extends StatelessWidget {
 
 class _StartButton extends StatelessWidget {
   final UserGender gender;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final bool loading;
 
-  const _StartButton({required this.gender, required this.onTap});
+  const _StartButton({
+    required this.gender,
+    required this.onTap,
+    this.loading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -350,16 +363,25 @@ class _StartButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           onTap: onTap,
           child: Center(
-            child: Text(
-              'ابدأ رحلتك ✨',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.3,
-              ),
-              textDirection: TextDirection.rtl,
-            ),
+            child: loading
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(Colors.white),
+                    ),
+                  )
+                : const Text(
+                    'ابدأ رحلتك ✨',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.3,
+                    ),
+                    textDirection: TextDirection.rtl,
+                  ),
           ),
         ),
       ),

@@ -22,27 +22,28 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscure = true;
-  bool _redirectScheduled = false;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    // إن كان المستخدم مسجَّل الدخول أصلًا (مثل وصول مباشر لرابط /login)
+    // يُحوَّل فورًا دون إظهار النموذج — يعمل مرة واحدة عند الدخول للشاشة فقط.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final session = context.read<SessionService>();
+      if (session.isGuest) return;
+      final completedWelcome = await session.currentAccountHasCompletedWelcome();
+      if (!mounted) return;
+      context.go(completedWelcome ? '/home' : '/welcome');
+    });
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  /// إن كان المستخدم مسجَّل الدخول أصلًا (مثل وصول مباشر لرابط /login)
-  /// يُحوَّل فورًا دون إظهار النموذج.
-  void _scheduleRedirectIfSignedIn(SessionService session) {
-    if (_redirectScheduled || session.isGuest) return;
-    _redirectScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final completedWelcome =
-          await session.currentAccountHasCompletedWelcome();
-      if (!mounted) return;
-      context.go(completedWelcome ? '/home' : '/welcome');
-    });
   }
 
   Future<void> _submit() async {
@@ -70,11 +71,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final session = context.watch<SessionService>();
-    _scheduleRedirectIfSignedIn(session);
-
-    if (_redirectScheduled) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('تسجيل الدخول')),
