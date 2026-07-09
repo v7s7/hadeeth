@@ -179,7 +179,7 @@ class _StreakFlamePainter extends CustomPainter {
       final opacity = index == 0 ? 1.0 : 0.30 - (index * 0.05);
       _paintFlame(
         canvas,
-        Rect.fromLTWH(dx, 1.5 + index, 21, 21 - index),
+        Rect.fromLTWH(dx, 1.5 + index, 21, 21.0 - index),
         color.withOpacity(opacity.clamp(0.16, 1.0).toDouble()),
       );
     }
