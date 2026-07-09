@@ -115,8 +115,12 @@ class _PendingHadithCard extends StatefulWidget {
 
 class _PendingHadithCardState extends State<_PendingHadithCard> {
   bool _expanded = false;
+  bool _approving = false;
+  bool _rejecting = false;
 
   Future<void> _approve(BuildContext context) async {
+    if (_approving || _rejecting) return;
+    setState(() => _approving = true);
     final now = DateTime.now();
     final hadith = Hadith.fromMap(widget.docId, {
       ...widget.data,
@@ -145,6 +149,7 @@ class _PendingHadithCardState extends State<_PendingHadithCard> {
         'approvedAt': FieldValue.serverTimestamp(),
       });
 
+      if (mounted) setState(() => _approving = false);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -154,6 +159,7 @@ class _PendingHadithCardState extends State<_PendingHadithCard> {
         );
       }
     } catch (e) {
+      if (mounted) setState(() => _approving = false);
       if (context.mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('خطأ: $e')));
@@ -162,6 +168,7 @@ class _PendingHadithCardState extends State<_PendingHadithCard> {
   }
 
   Future<void> _reject(BuildContext context) async {
+    if (_approving || _rejecting) return;
     final reasonCtrl = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -193,6 +200,7 @@ class _PendingHadithCardState extends State<_PendingHadithCard> {
 
     if (confirmed != true) return;
 
+    setState(() => _rejecting = true);
     try {
       await FirebaseFirestore.instance
           .collection('pending_hadiths')
@@ -204,6 +212,7 @@ class _PendingHadithCardState extends State<_PendingHadithCard> {
         if (reasonCtrl.text.trim().isNotEmpty)
           'rejectionReason': reasonCtrl.text.trim(),
       });
+      if (mounted) setState(() => _rejecting = false);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -213,6 +222,7 @@ class _PendingHadithCardState extends State<_PendingHadithCard> {
         );
       }
     } catch (e) {
+      if (mounted) setState(() => _rejecting = false);
       if (context.mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('خطأ: $e')));
@@ -322,8 +332,16 @@ class _PendingHadithCardState extends State<_PendingHadithCard> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 OutlinedButton.icon(
-                  onPressed: () => _reject(context),
-                  icon: const Icon(Icons.close_rounded, size: 16),
+                  onPressed: (_approving || _rejecting)
+                      ? null
+                      : () => _reject(context),
+                  icon: _rejecting
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.close_rounded, size: 16),
                   label: const Text('رفض'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.error,
@@ -333,8 +351,17 @@ class _PendingHadithCardState extends State<_PendingHadithCard> {
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton.icon(
-                  onPressed: () => _approve(context),
-                  icon: const Icon(Icons.check_rounded, size: 16),
+                  onPressed: (_approving || _rejecting)
+                      ? null
+                      : () => _approve(context),
+                  icon: _approving
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.check_rounded, size: 16),
                   label: const Text('قبول ونشر'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.success,
@@ -568,28 +595,39 @@ class _PendingCategoriesList extends StatelessWidget {
   }
 }
 
-class _PendingCategoryCard extends StatelessWidget {
+class _PendingCategoryCard extends StatefulWidget {
   final String docId;
   final Map<String, dynamic> data;
 
   const _PendingCategoryCard({required this.docId, required this.data});
 
+  @override
+  State<_PendingCategoryCard> createState() => _PendingCategoryCardState();
+}
+
+class _PendingCategoryCardState extends State<_PendingCategoryCard> {
+  bool _approving = false;
+  bool _rejecting = false;
+
   Future<void> _approve(BuildContext context) async {
+    if (_approving || _rejecting) return;
+    setState(() => _approving = true);
     final repo = context.read<CategoryRepository>();
-    final category = HadithCategory.fromMap(docId, {
-      ...data,
+    final category = HadithCategory.fromMap(widget.docId, {
+      ...widget.data,
       'isHidden': false,
     });
     try {
       await repo.addCategory(category);
       await FirebaseFirestore.instance
           .collection('pending_categories')
-          .doc(docId)
+          .doc(widget.docId)
           .update({
         'reviewStatus': 'approved',
         'approvedBy': FirebaseAuth.instance.currentUser?.uid ?? '',
         'approvedAt': FieldValue.serverTimestamp(),
       });
+      if (mounted) setState(() => _approving = false);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -599,6 +637,7 @@ class _PendingCategoryCard extends StatelessWidget {
         );
       }
     } catch (e) {
+      if (mounted) setState(() => _approving = false);
       if (context.mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('خطأ: $e')));
@@ -607,6 +646,7 @@ class _PendingCategoryCard extends StatelessWidget {
   }
 
   Future<void> _reject(BuildContext context) async {
+    if (_approving || _rejecting) return;
     final reasonCtrl = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -637,10 +677,11 @@ class _PendingCategoryCard extends StatelessWidget {
       ),
     );
     if (confirmed != true) return;
+    setState(() => _rejecting = true);
     try {
       await FirebaseFirestore.instance
           .collection('pending_categories')
-          .doc(docId)
+          .doc(widget.docId)
           .update({
         'reviewStatus': 'rejected',
         'rejectedBy': FirebaseAuth.instance.currentUser?.uid ?? '',
@@ -648,6 +689,7 @@ class _PendingCategoryCard extends StatelessWidget {
         if (reasonCtrl.text.trim().isNotEmpty)
           'rejectionReason': reasonCtrl.text.trim(),
       });
+      if (mounted) setState(() => _rejecting = false);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -657,6 +699,7 @@ class _PendingCategoryCard extends StatelessWidget {
         );
       }
     } catch (e) {
+      if (mounted) setState(() => _rejecting = false);
       if (context.mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('خطأ: $e')));
@@ -666,9 +709,9 @@ class _PendingCategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ts = data['submittedAt'] as Timestamp?;
+    final ts = widget.data['submittedAt'] as Timestamp?;
     final date = ts != null ? _fmt(ts.toDate()) : '…';
-    final submittedBy = data['submittedBy'] as String? ?? '';
+    final submittedBy = widget.data['submittedBy'] as String? ?? '';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -689,13 +732,13 @@ class _PendingCategoryCard extends StatelessWidget {
             if (submittedBy.isNotEmpty) _SubmitterChip(uid: submittedBy),
             const SizedBox(height: 4),
             Text(
-              data['nameAr'] as String? ?? '',
+              widget.data['nameAr'] as String? ?? '',
               style: AppTextStyles.bodyBold,
             ),
-            if ((data['descriptionAr'] as String? ?? '').isNotEmpty) ...[
+            if ((widget.data['descriptionAr'] as String? ?? '').isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(
-                data['descriptionAr'] as String,
+                widget.data['descriptionAr'] as String,
                 style: AppTextStyles.body,
               ),
             ],
@@ -704,8 +747,16 @@ class _PendingCategoryCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 OutlinedButton.icon(
-                  onPressed: () => _reject(context),
-                  icon: const Icon(Icons.close_rounded, size: 16),
+                  onPressed: (_approving || _rejecting)
+                      ? null
+                      : () => _reject(context),
+                  icon: _rejecting
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.close_rounded, size: 16),
                   label: const Text('رفض'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.error,
@@ -715,8 +766,17 @@ class _PendingCategoryCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton.icon(
-                  onPressed: () => _approve(context),
-                  icon: const Icon(Icons.check_rounded, size: 16),
+                  onPressed: (_approving || _rejecting)
+                      ? null
+                      : () => _approve(context),
+                  icon: _approving
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.check_rounded, size: 16),
                   label: const Text('قبول ونشر'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.success,

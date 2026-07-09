@@ -100,6 +100,14 @@ class SessionService extends ChangeNotifier {
     return _user?.email;
   }
 
+  /// الاسم المفضّل كما اختاره المستخدم فعليًا فقط — بدون أي قيمة احتياطية
+  /// من البريد الإلكتروني. يُستخدم في حقول الاسم والترحيب الشخصي حتى لا
+  /// يظهر البريد الإلكتروني بالخطأ كاسم.
+  String? get preferredName {
+    final name = _profile?.displayName;
+    return (name != null && name.isNotEmpty) ? name : null;
+  }
+
   /// هل المستخدم الحالي مشرف محتوى.
   bool get isAdmin => _profile?.role == UserRole.admin;
 
@@ -182,6 +190,20 @@ class SessionService extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  /// يرسل رابط إعادة تعيين كلمة المرور إلى البريد الإلكتروني المحدد.
+  ///
+  /// تُعيد رسالة خطأ بالعربية عند الفشل، أو null عند النجاح.
+  Future<String?> sendPasswordResetEmail(String email) async {
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email.trim());
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return _authErrorMessage(e);
+    } catch (_) {
+      return 'تعذّر إرسال رابط إعادة التعيين. تأكد من اتصالك بالإنترنت.';
     }
   }
 

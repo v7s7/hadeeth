@@ -6,6 +6,8 @@ import '../../services/local_storage_service.dart';
 import '../../services/session_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../../utils/validators.dart';
+import '../../widgets/app_feedback.dart';
 
 /// شاشة إنشاء حساب جديد بالبريد الإلكتروني وكلمة المرور.
 class RegisterScreen extends StatefulWidget {
@@ -16,13 +18,36 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  static const _strengthLabels = ['ضعيفة جدًا', 'ضعيفة', 'متوسطة', 'قوية', 'قوية جدًا'];
+  static const _strengthColors = [
+    AppColors.error,
+    AppColors.error,
+    AppColors.accentDark,
+    AppColors.success,
+    AppColors.success,
+  ];
+
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
-  bool _obscure = true;
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final session = context.read<SessionService>();
+      if (session.isGuest) return;
+      final completedWelcome = await session.currentAccountHasCompletedWelcome();
+      if (!mounted) return;
+      context.go(completedWelcome ? '/home' : '/welcome');
+    });
+  }
 
   @override
   void dispose() {
@@ -55,8 +80,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final completedWelcome =
           await session.currentAccountHasCompletedWelcome();
       if (!mounted) return;
+      AppFeedback.showSuccess(context, 'تم إنشاء حسابك بنجاح 🎉');
       context.go(completedWelcome ? '/home' : '/welcome');
     }
+  }
+
+  Widget _buildStrengthMeter() {
+    if (_passwordController.text.isEmpty) return const SizedBox.shrink();
+    final strength = Validators.passwordStrength(_passwordController.text);
+    final color = _strengthColors[strength];
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Row(
+              children: List.generate(4, (i) {
+                final filled = i < strength;
+                return Expanded(
+                  child: Container(
+                    margin: EdgeInsets.only(left: i == 3 ? 0 : 4),
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: filled ? color : AppColors.divider,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            _strengthLabels[strength],
+            style: AppTextStyles.caption.copyWith(color: color),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -92,7 +154,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(labelText: 'الاسم'),
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) return 'أدخل اسمك';
+                    if (value == null || value.trim().isEmpty) {
+                      return 'أدخل اسمك';
+                    }
                     return null;
                   },
                 ),
@@ -101,40 +165,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(labelText: 'البريد الإلكتروني'),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) return 'أدخل البريد الإلكتروني';
-                    if (!value.contains('@')) return 'صيغة البريد الإلكتروني غير صحيحة';
-                    return null;
-                  },
+                  decoration:
+                      const InputDecoration(labelText: 'البريد الإلكتروني'),
+                  validator: Validators.email,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _passwordController,
-                  obscureText: _obscure,
+                  obscureText: _obscurePassword,
                   textInputAction: TextInputAction.next,
+                  onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
                     labelText: 'كلمة المرور',
                     helperText: '6 أحرف على الأقل',
                     suffixIcon: IconButton(
-                      icon: Icon(_obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined),
-                      onPressed: () => setState(() => _obscure = !_obscure),
+                      icon: Icon(_obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined),
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                     ),
                   ),
-                  validator: (value) {
-                    if (value == null || value.length < 6) return 'كلمة المرور 6 أحرف على الأقل';
-                    return null;
-                  },
+                  validator: Validators.password,
                 ),
+                _buildStrengthMeter(),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _confirmController,
-                  obscureText: _obscure,
+                  obscureText: _obscureConfirm,
                   textInputAction: TextInputAction.done,
                   onFieldSubmitted: (_) => _submit(),
-                  decoration: const InputDecoration(labelText: 'تأكيد كلمة المرور'),
+                  decoration: InputDecoration(
+                    labelText: 'تأكيد كلمة المرور',
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscureConfirm
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined),
+                      onPressed: () =>
+                          setState(() => _obscureConfirm = !_obscureConfirm),
+                    ),
+                  ),
                   validator: (value) {
-                    if (value != _passwordController.text) return 'كلمتا المرور غير متطابقتين';
+                    if (value != _passwordController.text) {
+                      return 'كلمتا المرور غير متطابقتين';
+                    }
                     return null;
                   },
                 ),
@@ -155,7 +229,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ? const SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
                           )
                         : const Text('إنشاء الحساب'),
                   ),

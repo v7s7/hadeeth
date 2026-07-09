@@ -19,6 +19,7 @@ import '../../widgets/abandoned_badge.dart';
 import '../../widgets/daily_goal_card.dart';
 import '../../widgets/guest_banner.dart';
 import '../../widgets/hadith_card.dart';
+import '../../widgets/save_progress_dialog.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/streak_badge.dart';
 import '../../widgets/xp_progress_bar.dart';
@@ -91,8 +92,9 @@ class HomeScreen extends StatelessWidget {
             return ListView(
               padding: EdgeInsets.fromLTRB(side + 16, 16, side + 16, 16),
               children: [
+                SignupNudge(isGuest: session.isGuest, progress: progress),
                 if (session.isGuest) ...[
-                  const GuestBanner(),
+                  GuestBanner(onTap: () => context.push('/register')),
                   const SizedBox(height: 16),
                 ],
 
@@ -229,7 +231,7 @@ class _CharacterGreetingCardState extends State<_CharacterGreetingCard> {
     if (instant != null) {
       _gender = instant;
     }
-    _preferredName = widget.session.displayName ??
+    _preferredName = widget.session.preferredName ??
         LocalStorageService.cachedPreferredName;
     _loadData();
   }
@@ -240,7 +242,7 @@ class _CharacterGreetingCardState extends State<_CharacterGreetingCard> {
     if (widget.session.gender != oldWidget.session.gender ||
         widget.session.characterId != oldWidget.session.characterId ||
         widget.session.activeAccessoryId != oldWidget.session.activeAccessoryId ||
-        widget.session.displayName != oldWidget.session.displayName) {
+        widget.session.preferredName != oldWidget.session.preferredName) {
       setState(() {
         if (widget.session.gender != null) _gender = widget.session.gender;
         _character = AppCharacters.findById(widget.session.characterId) ??
@@ -249,7 +251,7 @@ class _CharacterGreetingCardState extends State<_CharacterGreetingCard> {
               widget.session.activeAccessoryId,
             ) ??
             _accessory;
-        _preferredName = widget.session.displayName ?? _preferredName;
+        _preferredName = widget.session.preferredName ?? _preferredName;
       });
     }
   }
@@ -263,7 +265,7 @@ class _CharacterGreetingCardState extends State<_CharacterGreetingCard> {
     final accessoryId = widget.session.activeAccessoryId ??
         LocalStorageService.cachedActiveAccessoryId ??
         await storage.loadActiveAccessoryId();
-    final name = widget.session.displayName ??
+    final name = widget.session.preferredName ??
         LocalStorageService.cachedPreferredName ??
         await storage.loadPreferredName();
     final char = AppCharacters.findById(id) ??

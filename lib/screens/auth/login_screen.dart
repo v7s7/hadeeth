@@ -5,6 +5,9 @@ import 'package:provider/provider.dart';
 import '../../services/session_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../../utils/validators.dart';
+import '../../widgets/app_feedback.dart';
+import '../../widgets/forgot_password_dialog.dart';
 
 /// شاشة تسجيل الدخول بالبريد الإلكتروني وكلمة المرور.
 class LoginScreen extends StatefulWidget {
@@ -20,6 +23,21 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscure = true;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    // إن كان المستخدم مسجَّل الدخول أصلًا (مثل وصول مباشر لرابط /login)
+    // يُحوَّل فورًا دون إظهار النموذج — يعمل مرة واحدة عند الدخول للشاشة فقط.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final session = context.read<SessionService>();
+      if (session.isGuest) return;
+      final completedWelcome = await session.currentAccountHasCompletedWelcome();
+      if (!mounted) return;
+      context.go(completedWelcome ? '/home' : '/welcome');
+    });
+  }
 
   @override
   void dispose() {
@@ -45,6 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final completedWelcome =
           await session.currentAccountHasCompletedWelcome();
       if (!mounted) return;
+      AppFeedback.showSuccess(context, 'مرحبًا بعودتك 👋');
       context.go(completedWelcome ? '/home' : '/welcome');
     }
   }
@@ -81,11 +100,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(labelText: 'البريد الإلكتروني'),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) return 'أدخل البريد الإلكتروني';
-                    return null;
-                  },
+                  decoration:
+                      const InputDecoration(labelText: 'البريد الإلكتروني'),
+                  validator: Validators.email,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -96,24 +113,30 @@ class _LoginScreenState extends State<LoginScreen> {
                   decoration: InputDecoration(
                     labelText: 'كلمة المرور',
                     suffixIcon: IconButton(
-                      icon: Icon(_obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                      icon: Icon(_obscure
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined),
                       onPressed: () => setState(() => _obscure = !_obscure),
                     ),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'أدخل كلمة المرور';
-                    return null;
-                  },
+                  validator: Validators.password,
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: () => showForgotPasswordDialog(context),
+                    child: const Text('نسيت كلمة المرور؟'),
+                  ),
                 ),
                 if (_errorMessage != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 4),
                   Text(
                     _errorMessage!,
                     style: AppTextStyles.body.copyWith(color: AppColors.error),
                     textAlign: TextAlign.center,
                   ),
                 ],
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -122,7 +145,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         ? const SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
                           )
                         : const Text('تسجيل الدخول'),
                   ),

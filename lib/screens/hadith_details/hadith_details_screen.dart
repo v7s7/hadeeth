@@ -16,6 +16,7 @@ import '../../theme/app_text_styles.dart';
 import '../../widgets/abandoned_badge.dart';
 import '../../widgets/completion_overlay.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/xp_toast.dart';
 
 /// شاشة تفاصيل الحديث: النص الكامل، الراوي، المصدر، الشرح، الفوائد،
 /// الكلمات الغريبة، وأزرار الحفظ والتعلم والمشاركة والاختبار.
@@ -49,8 +50,7 @@ class _HadithDetailsScreenState extends State<HadithDetailsScreen> {
 
     if (xpGained > 0 && mounted) {
       final boost = progressService.streakMultiplierLabel;
-      final label = boost.isEmpty ? '+$xpGained XP' : '+$xpGained XP  $boost';
-      _showSnackBar(label);
+      showXpToast(context, amount: xpGained, caption: boost.isEmpty ? null : boost);
     }
   }
 
@@ -63,31 +63,34 @@ class _HadithDetailsScreenState extends State<HadithDetailsScreen> {
     final xpGained = await progressService.markHadithLearned(hadith.id);
     if (!mounted) return;
 
-    final totalXpAfter = progressService.progress.totalXp;
-    final levelAfter   = progressService.currentLevel.level;
-    final newStreak    = progressService.progress.currentStreak;
+    // Only show the celebration overlay when XP was actually earned.
+    // (xpGained == 0 means the daily cap was hit; skip the overlay.)
+    if (xpGained > 0) {
+      final totalXpAfter = progressService.progress.totalXp;
+      final levelAfter   = progressService.currentLevel.level;
+      final newStreak    = progressService.progress.currentStreak;
 
-    // Load selected character + accessory (cached from SharedPreferences)
-    final charId    = LocalStorageService.cachedCharacterId
-        ?? await LocalStorageService().loadCharacterId();
-    final character = AppCharacters.findById(charId);
+      final charId    = LocalStorageService.cachedCharacterId
+          ?? await LocalStorageService().loadCharacterId();
+      final character = AppCharacters.findById(charId);
 
-    final accessoryId = LocalStorageService.cachedActiveAccessoryId
-        ?? await LocalStorageService().loadActiveAccessoryId();
-    final accessory = AppAccessories.findById(accessoryId);
+      final accessoryId = LocalStorageService.cachedActiveAccessoryId
+          ?? await LocalStorageService().loadActiveAccessoryId();
+      final accessory = AppAccessories.findById(accessoryId);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    await showCompletionOverlay(
-      context: context,
-      xpGained: xpGained,
-      newStreak: newStreak,
-      totalXpAfter: totalXpAfter,
-      levelBefore: levelBefore,
-      levelAfter: levelAfter,
-      character: character,
-      accessory: accessory,
-    );
+      await showCompletionOverlay(
+        context: context,
+        xpGained: xpGained,
+        newStreak: newStreak,
+        totalXpAfter: totalXpAfter,
+        levelBefore: levelBefore,
+        levelAfter: levelAfter,
+        character: character,
+        accessory: accessory,
+      );
+    }
   }
 
   void _shareHadith(Hadith hadith) {

@@ -48,8 +48,8 @@ Future<void> main() async {
     // Firebase غير مهيّأ؛ يستمر التطبيق بالتخزين المحلي.
   }
 
-  // تهيئة نظام الإشعارات المحلية.
-  await NotificationService.init();
+  // تهيئة نظام الإشعارات المحلية (لا تعمل على الويب).
+  if (!kIsWeb) await NotificationService.init();
 
   runApp(const HadeethApp());
 }

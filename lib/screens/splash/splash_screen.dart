@@ -45,7 +45,8 @@ class _SplashScreenState extends State<SplashScreen> {
         final doc = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
-            .get();
+            .get()
+            .timeout(const Duration(seconds: 6));
         final data = doc.data();
         completedWelcome = data?['completedWelcome'] as bool? ?? false;
         seenOnboarding = data?['completedOnboarding'] as bool? ?? false;
